@@ -28,7 +28,11 @@ The app id is `uz.yangialifbo.app` on every platform.
 
 | Path | What it holds |
 |------|---------------|
-| `lib/main.dart` | The app |
+| `lib/main.dart` | Starts the app, with its light and dark themes |
+| `lib/convert_page.dart` | The screen: drop or choose Word documents, watch each one convert, open the folder |
+| `lib/document.dart` | A document on its way through the queue, and how it is converted and named |
+| `lib/settings.dart` | What the app keeps between runs (save folder, "Open the folder when done", history), and showing files in Finder or Explorer |
+| `lib/widgets/` | The drop zone and the document cards |
 | `lib/engine.dart` | The engine's functions, for the app's code to import |
 | `lib/src/rust/` | Bindings that flutter_rust_bridge generates; not edited by hand |
 | `rust/` | The Rust crate that exposes the engine to Dart (`rust/src/api/transliterator.rs`) |
@@ -41,8 +45,13 @@ before them, as `main()` does. A `Change`'s `start` and `end` index the Dart str
 `Options(cyrillic: false)` converts only one script. `convertDocx` throws `DocxError.notWord` for a file that is not a
 Word document, and `DocxError.damaged` for a broken one.
 
-The macOS app is sandboxed. It has two entitlements, so it can open the documents people choose and save to Downloads:
-`com.apple.security.files.user-selected.read-only` and `com.apple.security.files.downloads.read-write`.
+Converted documents go to the app's own Documents folder (on macOS, `~/Library/Containers/uz.yangialifbo.app/Data/Documents`;
+on Windows and Linux, `Documents/Yangi alifbo`) until another folder is chosen in Settings.
+
+The macOS app is sandboxed. `com.apple.security.files.user-selected.read-write` lets it read the documents people
+choose or drop and write to the folder they choose; `com.apple.security.files.bookmarks.app-scope` lets it keep that
+folder after a restart, through a bookmark (`macos/Runner/MainFlutterWindow.swift`). Finder is asked to reveal files
+rather than open folders, which the sandbox does not allow.
 
 ## Changing the Rust side
 

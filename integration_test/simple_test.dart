@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yangi_alifbo/engine.dart';
-import 'package:yangi_alifbo/main.dart';
+import 'package:yangi_alifbo/convert_page.dart';
+import 'package:yangi_alifbo/document.dart';
+import 'package:yangi_alifbo/settings.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -16,37 +18,75 @@ void main() {
     expect(await convert(text: 'Toshkent shahri, Ўзбекистон'), 'Toşkent şahri, Özbekiston');
   });
 
-  testWidgets('saves the chosen Word documents in the new alphabet, next to what is there', (tester) async {
+  testWidgets('saves the chosen Word documents in the new alphabet, shows them, and keeps them in the history', (
+    tester,
+  ) async {
     // The documents come straight from the test instead of from the file dialog, and go to a folder of the test's own.
     final hello = (await rootBundle.load('integration_test/hello.docx')).buffer.asUint8List();
-    final downloads = await Directory.systemTemp.createTemp('downloads');
-    addTearDown(() => downloads.delete(recursive: true));
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ConvertPage(
-          pickDocuments: () async => [
-            // Outside the web, an XFile made from bytes takes its name from the path.
-            XFile.fromData(hello, path: 'hello.docx'),
-            XFile.fromData(utf8.encode('Toshkent'), path: 'notes.docx'),
-          ],
-          downloads: () async => downloads,
-        ),
+    final folder = await Directory.systemTemp.createTemp('saved');
+    addTearDown(() => folder.delete(recursive: true));
+    final settings = _MemorySettings(folder);
+    final themeMode = ValueNotifier(ThemeMode.system);
+    final revealed = <List<String>>[];
+    Widget app() => MaterialApp(
+      home: ConvertPage(
+        key: UniqueKey(),
+        themeMode: themeMode,
+        pickDocuments: () async => [
+          // Outside the web, an XFile made from bytes takes its name from the path.
+          XFile.fromData(hello, path: 'hello.docx'),
+          XFile.fromData(utf8.encode('Toshkent'), path: 'notes.docx'),
+        ],
+        reveal: (paths) async => revealed.add(paths),
+        settings: settings,
       ),
     );
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Convert Word documents'));
+    await tester.tap(find.text('Choose files'));
     await pumpUntilFound(tester, find.text('hello-yangi.docx'));
     expect(find.text('hello-yangi.docx'), findsOneWidget);
-    expect(find.text('Saved to Downloads: 3 old letters, 2 Cyrillic words, 1 left as typed'), findsOneWidget);
+    expect(find.textContaining('3 old letters, 2 Cyrillic words, 1 left as typed'), findsOneWidget);
     expect(find.text('notes.docx'), findsOneWidget);
-    expect(find.text('Not a Word document'), findsOneWidget);
-    final saved = await File('${downloads.path}/hello-yangi.docx').readAsBytes();
+    expect(find.textContaining('Not a Word document'), findsOneWidget);
+    final saved = await File('${folder.path}/hello-yangi.docx').readAsBytes();
     expect((await convertDocx(docx: saved)).summary.oldLetters, 0);
+    await tester.pumpAndSettle();
+    // When the batch is done, the file manager shows what it saved.
+    expect(revealed, [
+      ['${folder.path}/hello-yangi.docx'],
+    ]);
 
-    await tester.tap(find.text('Convert Word documents'));
+    await tester.tap(find.text('Choose files'));
     await pumpUntilFound(tester, find.text('hello-yangi (1).docx'));
+    expect(File('${folder.path}/hello-yangi.docx').readAsBytesSync(), saved);
+    await tester.pumpAndSettle();
+    expect(revealed, hasLength(2));
+
+    // After a restart the history is still there, and a document's own button shows it.
+    settings.open = false;
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(find.text('hello-yangi.docx'), findsOneWidget);
     expect(find.text('hello-yangi (1).docx'), findsOneWidget);
-    expect(File('${downloads.path}/hello-yangi.docx').readAsBytesSync(), saved);
+    expect(find.text('notes.docx'), findsNWidgets(2));
+    await tester.tap(find.byTooltip('Show in Finder').last);
+    expect(revealed.last, ['${folder.path}/hello-yangi.docx']);
+
+    // With the setting off, nothing is shown when a batch is done.
+    await tester.tap(find.text('Choose files'));
+    await pumpUntilFound(tester, find.text('hello-yangi (2).docx'));
+    await tester.pumpAndSettle();
+    expect(revealed, hasLength(3));
+
+    // The theme chosen in Settings is applied and kept.
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dark'));
+    await tester.pumpAndSettle();
+    expect(themeMode.value, ThemeMode.dark);
+    expect(settings.theme, ThemeMode.dark);
   });
 }
 
@@ -55,4 +95,38 @@ Future<void> pumpUntilFound(WidgetTester tester, Finder finder) async {
   for (var tries = 0; tries < 100 && finder.evaluate().isEmpty; tries++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
+}
+
+class _MemorySettings implements Settings {
+  _MemorySettings(this.folder);
+
+  Directory folder;
+  bool open = true;
+  ThemeMode theme = ThemeMode.system;
+  List<Map<String, dynamic>> saved = [];
+
+  @override
+  Future<bool> openFolderWhenDone() async => open;
+
+  @override
+  Future<void> setOpenFolderWhenDone(bool open) async => this.open = open;
+
+  @override
+  Future<ThemeMode> themeMode() async => theme;
+
+  @override
+  Future<void> setThemeMode(ThemeMode mode) async => theme = mode;
+
+  @override
+  Future<Directory> saveFolder() async => folder;
+
+  @override
+  Future<void> setSaveFolder(String? folder) async => this.folder = Directory(folder ?? this.folder.path);
+
+  @override
+  Future<List<Document>> history() async => [for (final entry in saved) Document.fromJson(entry)];
+
+  @override
+  Future<void> setHistory(List<Document> documents) async =>
+      saved = [for (final document in documents) document.toJson()];
 }
