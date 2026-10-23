@@ -1,0 +1,42 @@
+# Analyzes the app and runs the engine tests through the bridge on every push to main and every pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # rust/Cargo.toml takes the engine from its private repository. Cargo fetches it with git, over SSH with the
+  # engine's read-only deploy key (the ENGINE_DEPLOY_KEY secret).
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.ENGINE_DEPLOY_KEY }}
+      - name: Fetch the engine over SSH
+        run: git config --global url."ssh://git@github.com/discoveruz/uzbek-transliterator-engine".insteadOf "https://github.com/discoveruz/uzbek-transliterator-engine"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.1
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      # flutter test loads the library from rust/target/release/.
+      - run: cargo build --release
+        working-directory: rust
+      - run: flutter test

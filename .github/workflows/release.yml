@@ -1,0 +1,141 @@
+# Builds the app for Android, Linux, macOS and Windows. A v* tag (v1.2.0) also publishes the builds as a GitHub release
+# of this repository, under the same names every time, so
+# https://github.com/discoveruz/uzbek-transliterator-flutter/releases/latest/download/<name> always gives the newest one.
+# Running the workflow by hand (Actions › Release › Run workflow) only builds; the builds are kept as artifacts of the run.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  # See ci.yml: Cargo fetches the private engine over SSH with its deploy key.
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: android
+            os: ubuntu-latest
+            file: yangi-alifbo-android.apk
+          - platform: linux
+            os: ubuntu-latest
+            file: yangi-alifbo-linux-x64.tar.gz
+          - platform: macos
+            os: macos-latest
+            file: yangi-alifbo-macos.zip
+          - platform: windows
+            os: windows-latest
+            file: yangi-alifbo-windows-x64.zip
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.ENGINE_DEPLOY_KEY }}
+      - name: Fetch the engine over SSH
+        run: git config --global url."ssh://git@github.com/discoveruz/uzbek-transliterator-engine".insteadOf "https://github.com/discoveruz/uzbek-transliterator-engine"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.1
+          channel: stable
+          cache: true
+
+      - name: Version
+        # A tag names the version (v1.2.0 is 1.2.0); a run by hand keeps the one in pubspec.yaml. The run number counts
+        # the builds, which Android needs to go up with every update.
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            name=${GITHUB_REF_NAME#v}
+          else
+            name=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
+          fi
+          echo "BUILD_NAME=$name" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+
+      - if: matrix.platform == 'android'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - if: matrix.platform == 'android'
+        name: Release keystore
+        # A published APK must be signed with the release key, or it can't update the one people installed. A run by
+        # hand without the secrets falls back to the debug key.
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [[ -z "$KEYSTORE" ]]; then
+            if [[ "$GITHUB_REF_TYPE" == tag ]]; then echo "::error::ANDROID_KEYSTORE_BASE64 is not set"; exit 1; fi
+            echo "::warning::No release keystore; the APK is signed with the debug key"
+            exit 0
+          fi
+          echo "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=upload\nkeyPassword=%s\n' \
+            "$RUNNER_TEMP/release.jks" "$PASSWORD" "$PASSWORD" > android/key.properties
+      - if: matrix.platform == 'android'
+        run: |
+          flutter build apk --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
+          mv build/app/outputs/flutter-apk/app-release.apk ${{ matrix.file }}
+
+      - if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+          flutter build linux --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
+          mv build/linux/x64/release/bundle yangi-alifbo
+          tar -czf ${{ matrix.file }} yangi-alifbo
+
+      - if: matrix.platform == 'macos'
+        run: |
+          flutter build macos --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
+          ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/yangi_alifbo.app ${{ matrix.file }}
+
+      - if: matrix.platform == 'windows'
+        run: |
+          flutter build windows --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
+          mv build/windows/x64/runner/Release yangi-alifbo
+          7z a ${{ matrix.file }} yangi-alifbo
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.platform }}
+          path: ${{ matrix.file }}
+          if-no-files-found: error
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          | Platform | Download |
+          |----------|----------|
+          | Android | `yangi-alifbo-android.apk`: open it on the phone and allow installing apps from the browser or Files |
+          | macOS | `yangi-alifbo-macos.zip`: unzip and move the app to Applications. It isn't notarized, so the first time open it, then allow it in System Settings › Privacy & Security › Open Anyway |
+          | Windows | `yangi-alifbo-windows-x64.zip`: unzip and run `yangi_alifbo.exe`. SmartScreen may ask: More info › Run anyway |
+          | Linux | `yangi-alifbo-linux-x64.tar.gz`: unpack and run `yangi-alifbo/yangi_alifbo` (needs GTK 3) |
+          EOF
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Yangi alifbo $GITHUB_REF_NAME" \
+            --notes-file notes.md

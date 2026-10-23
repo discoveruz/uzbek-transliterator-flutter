@@ -98,3 +98,36 @@ yangi-alifbo = { path = "../uzbek-transliterator-engine" }
 ```
 
 `flutter test` and the app's builds both use it. Git ignores that file. Delete it to go back to the tagged engine.
+
+## CI and releases
+
+`.github/workflows/ci.yml` runs `flutter analyze`, builds the Rust library and runs `flutter test` on every push to
+`main` and every pull request.
+
+`.github/workflows/release.yml` builds the app for Android, Linux, macOS and Windows. Pushing a tag publishes the builds
+as a release on this repository's [Releases](https://github.com/discoveruz/uzbek-transliterator-flutter/releases) page:
+
+```
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+The tag is the version (`1.0.0`), and the workflow's run number is the build number. Each file keeps its name in every
+release, so `https://github.com/discoveruz/uzbek-transliterator-flutter/releases/latest/download/yangi-alifbo-android.apk`
+(or `-macos.zip`, `-windows-x64.zip`, `-linux-x64.tar.gz`) is always the newest. Running the workflow by hand from the
+Actions tab only builds; its builds are kept with the run.
+
+The workflows need these repository secrets:
+
+| Secret | What it is |
+|--------|------------|
+| `ENGINE_DEPLOY_KEY` | The private half of a read-only deploy key on the engine repository, so Cargo can fetch the engine |
+| `ANDROID_KEYSTORE_BASE64` | The Android release keystore, in base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | Its password (the key's alias is `upload`) |
+
+Android release builds are signed with the key that `android/key.properties` names (`storeFile`, `storePassword`,
+`keyAlias`, `keyPassword`), or with the debug key when there is no such file. Git ignores it. Every update of the app
+must be signed with the same release key, so keep a copy of the keystore somewhere safe.
+
+## License
+
+MIT; see [LICENSE](LICENSE).
