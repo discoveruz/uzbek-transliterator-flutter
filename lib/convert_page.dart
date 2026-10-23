@@ -17,6 +17,7 @@ class ConvertPage extends StatefulWidget {
     this.pickDocuments = _pickDocuments,
     this.pickFolder = getDirectoryPath,
     this.reveal = revealInFileManager,
+    this.share = shareFiles,
     this.settings = const Settings(),
   });
 
@@ -28,6 +29,10 @@ class ConvertPage extends StatefulWidget {
 
   /// Shows files or folders in the file manager, selected where that can be done.
   final Future<void> Function(List<String> paths) reveal;
+
+  /// Offers files to other apps through the share sheet, pointing at `origin` on an iPad. Phones, which have no file
+  /// manager for [reveal], use it instead.
+  final Future<void> Function(List<String> paths, Rect origin) share;
 
   final Settings settings;
 
@@ -48,8 +53,9 @@ Future<List<XFile>> _pickDocuments() => openFiles(
   ],
 );
 
-// Android, macOS, Windows and Linux take files dropped from elsewhere; iOS does not.
-final bool _canDrop = !Platform.isIOS;
+// macOS, Windows and Linux take files dropped from elsewhere. iOS does not, and Android hands over content:// links
+// that dart:io cannot read.
+final bool _canDrop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
 class _ConvertPageState extends State<ConvertPage> {
   /// The documents still to convert, in the order they came, the one converting first.
@@ -146,6 +152,18 @@ class _ConvertPageState extends State<ConvertPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${document.name} was moved or deleted')));
   }
 
+  // Offers the saved document to other apps, the share sheet pointing at its card. iOS moves the app's folders when it
+  // updates the app, so a document that is not where it was saved is looked for in the folder documents are saved in.
+  Future<void> _share(Document document, BuildContext card) async {
+    final box = card.findRenderObject()! as RenderBox;
+    final origin = box.localToGlobal(Offset.zero) & box.size;
+    var file = File(document.path!);
+    if (!file.existsSync()) file = File('${(_folder ?? await _loadFolder()).path}/${document.name}');
+    if (file.existsSync()) return widget.share([file.path], origin);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${document.name} was moved or deleted')));
+  }
+
   void _clearHistory() {
     setState(_done.clear);
     widget.settings.setHistory(_done);
@@ -172,45 +190,48 @@ class _ConvertPageState extends State<ConvertPage> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   child: Text('Settings', style: Theme.of(context).textTheme.titleLarge),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.folder_rounded),
-                  title: const Text('Save to'),
-                  subtitle: Text(
-                    _folder == null ? '…' : describeFolder(_folder!, isDefault: _folderIsDefault),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: _folder == null ? null : () => widget.reveal([_folder!.path]),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!_folderIsDefault)
-                        IconButton(
-                          tooltip: 'Back to app documents',
-                          onPressed: () => _changeFolder(null, setSheetState),
-                          icon: const Icon(Icons.restart_alt_rounded),
+                // Phones keep the documents in the app's own folder, and share them from there.
+                if (canOpenFolders) ...[
+                  ListTile(
+                    leading: const Icon(Icons.folder_rounded),
+                    title: const Text('Save to'),
+                    subtitle: Text(
+                      _folder == null ? '…' : describeFolder(_folder!, isDefault: _folderIsDefault),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: _folder == null ? null : () => widget.reveal([_folder!.path]),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!_folderIsDefault)
+                          IconButton(
+                            tooltip: 'Back to app documents',
+                            onPressed: () => _changeFolder(null, setSheetState),
+                            icon: const Icon(Icons.restart_alt_rounded),
+                          ),
+                        FilledButton.tonal(
+                          onPressed: () async {
+                            final folder = await widget.pickFolder();
+                            if (folder != null) await _changeFolder(folder, setSheetState);
+                          },
+                          child: const Text('Change…'),
                         ),
-                      FilledButton.tonal(
-                        onPressed: () async {
-                          final folder = await widget.pickFolder();
-                          if (folder != null) await _changeFolder(folder, setSheetState);
-                        },
-                        child: const Text('Change…'),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                SwitchListTile(
-                  secondary: const Icon(Icons.folder_special_outlined),
-                  title: const Text('Open the folder when done'),
-                  subtitle: Text('Shows the saved documents in $fileManager after each batch'),
-                  value: _openFolderWhenDone,
-                  onChanged: (open) {
-                    setState(() => _openFolderWhenDone = open);
-                    setSheetState(() {});
-                    widget.settings.setOpenFolderWhenDone(open);
-                  },
-                ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.folder_special_outlined),
+                    title: const Text('Open the folder when done'),
+                    subtitle: Text('Shows the saved documents in $fileManager after each batch'),
+                    value: _openFolderWhenDone,
+                    onChanged: (open) {
+                      setState(() => _openFolderWhenDone = open);
+                      setSheetState(() {});
+                      widget.settings.setOpenFolderWhenDone(open);
+                    },
+                  ),
+                ],
                 ListTile(
                   leading: const Icon(Icons.contrast_rounded),
                   title: const Text('Theme'),
@@ -247,48 +268,55 @@ class _ConvertPageState extends State<ConvertPage> {
     final empty = _queue.isEmpty && _done.isEmpty;
     final page = CustomScrollView(
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          sliver: SliverToBoxAdapter(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (empty) SizedBox(height: MediaQuery.sizeOf(context).height * 0.08),
-                    DropZone(
-                      dragging: _dragging,
-                      canDrop: _canDrop,
-                      compact: !empty,
-                      saveTo: _folder == null ? null : describeFolder(_folder!, isDefault: _folderIsDefault),
-                      onChoose: _choose,
-                    ),
-                    if (_queue.isNotEmpty) ...[
-                      const SizedBox(height: 28),
-                      _Progress(done: _batch - _queue.length, total: _batch),
-                      const SizedBox(height: 12),
-                      for (final document in _queue) _card(document),
-                    ],
-                    if (_done.isNotEmpty) ...[
-                      const SizedBox(height: 28),
-                      Row(
-                        children: [
-                          Text('History', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 8),
-                          _Count(_done.length),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: _clearHistory,
-                            style: TextButton.styleFrom(foregroundColor: colors.onSurfaceVariant),
-                            child: const Text('Clear'),
-                          ),
-                        ],
+        // Keeps the last card above a phone's home indicator or navigation bar; the app bar keeps clear of the top.
+        SliverSafeArea(
+          top: false,
+          sliver: SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (empty) SizedBox(height: MediaQuery.sizeOf(context).height * 0.08),
+                      DropZone(
+                        dragging: _dragging,
+                        canDrop: _canDrop,
+                        compact: !empty,
+                        // A phone's documents stay in the app until they are shared, so there is no folder to name.
+                        saveTo: _folder == null || !canOpenFolders
+                            ? null
+                            : describeFolder(_folder!, isDefault: _folderIsDefault),
+                        onChoose: _choose,
                       ),
-                      const SizedBox(height: 8),
-                      for (final document in _done) _card(document),
+                      if (_queue.isNotEmpty) ...[
+                        const SizedBox(height: 28),
+                        _Progress(done: _batch - _queue.length, total: _batch),
+                        const SizedBox(height: 12),
+                        for (final document in _queue) _card(document),
+                      ],
+                      if (_done.isNotEmpty) ...[
+                        const SizedBox(height: 28),
+                        Row(
+                          children: [
+                            Text('History', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 8),
+                            _Count(_done.length),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: _clearHistory,
+                              style: TextButton.styleFrom(foregroundColor: colors.onSurfaceVariant),
+                              child: const Text('Clear'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        for (final document in _done) _card(document),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -326,8 +354,7 @@ class _ConvertPageState extends State<ConvertPage> {
           ],
         ),
         actions: [
-          if (canOpenFolders)
-            IconButton(tooltip: 'Settings', onPressed: _showSettings, icon: const Icon(Icons.tune_rounded)),
+          IconButton(tooltip: 'Settings', onPressed: _showSettings, icon: const Icon(Icons.tune_rounded)),
           const SizedBox(width: 12),
         ],
       ),
@@ -342,13 +369,23 @@ class _ConvertPageState extends State<ConvertPage> {
     );
   }
 
+  // A saved document's button shows it in the file manager, or on a phone, which has none, shares it.
   Widget _card(Document document) => Padding(
     key: ObjectKey(document),
     padding: const EdgeInsets.only(bottom: 8),
-    child: DocumentCard(
-      document: document,
-      onReveal: canOpenFolders && document.path != null ? () => _reveal(document) : null,
-      revealLabel: Platform.isLinux ? 'Show in folder' : 'Show in $fileManager',
+    child: Builder(
+      builder: (card) => canOpenFolders
+          ? DocumentCard(
+              document: document,
+              onAction: document.path == null ? null : () => _reveal(document),
+              actionLabel: Platform.isLinux ? 'Show in folder' : 'Show in $fileManager',
+            )
+          : DocumentCard(
+              document: document,
+              onAction: document.path == null ? null : () => _share(document, card),
+              actionLabel: 'Share',
+              actionIcon: Icons.adaptive.share_rounded,
+            ),
     ),
   );
 }

@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/material.dart' show Rect, ThemeMode;
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:yangi_alifbo/document.dart';
 
-/// Whether this platform has a file manager to show folders in: Finder, Explorer or the Linux one.
+/// Whether this platform has a file manager to show folders in: Finder, Explorer or the Linux one. Phones have none,
+/// and share the documents instead.
 final bool canOpenFolders = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
 /// What this platform's file manager is called.
@@ -92,8 +94,8 @@ class Settings {
   );
 }
 
-/// Where the documents are saved until another folder is chosen: the app's own Documents folder, and on Windows and
-/// Linux a Yangi alifbo folder in the person's Documents.
+/// Where the documents are saved until another folder is chosen, and always on phones: the app's own Documents folder,
+/// and on Windows and Linux a Yangi alifbo folder in the person's Documents.
 Future<Directory> defaultSaveFolder() async {
   final documents = await getApplicationDocumentsDirectory();
   return Platform.isWindows || Platform.isLinux
@@ -118,6 +120,14 @@ Future<void> revealInFileManager(List<String> paths) async {
   } on PlatformException {
     // The Linux file manager opens folders as links; there is nothing else to try.
   }
+}
+
+/// Offers the files at `paths` to other apps through the share sheet, which points at `origin` on an iPad. This is how
+/// a phone gets the documents out of the app: to Files, Word, a chat or mail.
+Future<void> shareFiles(List<String> paths, Rect origin) async {
+  await SharePlus.instance.share(
+    ShareParams(files: [for (final path in paths) XFile(path)], sharePositionOrigin: origin),
+  );
 }
 
 /// A short way to write `folder` for people: "App documents" for the app's own Documents folder, and the home folder

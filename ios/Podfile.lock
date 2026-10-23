@@ -6,12 +6,22 @@ PODS:
     - Flutter
   - rust_lib_yangi_alifbo (0.0.1):
     - Flutter
+  - share_plus (0.0.1):
+    - Flutter
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - url_launcher_ios (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - file_selector_ios (from `.symlinks/plugins/file_selector_ios/ios`)
   - Flutter (from `Flutter`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - rust_lib_yangi_alifbo (from `.symlinks/plugins/rust_lib_yangi_alifbo/ios`)
+  - share_plus (from `.symlinks/plugins/share_plus/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 EXTERNAL SOURCES:
   file_selector_ios:
@@ -22,12 +32,21 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/integration_test/ios"
   rust_lib_yangi_alifbo:
     :path: ".symlinks/plugins/rust_lib_yangi_alifbo/ios"
+  share_plus:
+    :path: ".symlinks/plugins/share_plus/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
   file_selector_ios: 8e1d792478f6af248b8b601e3e0f02eb74a19c02
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
   rust_lib_yangi_alifbo: 51da499c62f7d5b70b9dffb0b42ddee715db54fa
+  share_plus: 796a4b55a883a34f4f1ff7bbd19436879a5055db
+  shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6
+  url_launcher_ios: bb13df5870e8c4234ca12609d04010a21be43dfa
 
 PODFILE CHECKSUM: 3ba3a73b1b12adcf321a227a745625fe0888cc82
 

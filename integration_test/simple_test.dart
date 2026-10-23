@@ -28,6 +28,7 @@ void main() {
     final settings = _MemorySettings(folder);
     final themeMode = ValueNotifier(ThemeMode.system);
     final revealed = <List<String>>[];
+    final shared = <List<String>>[];
     Widget app() => MaterialApp(
       home: ConvertPage(
         key: UniqueKey(),
@@ -38,14 +39,19 @@ void main() {
           XFile.fromData(utf8.encode('Toshkent'), path: 'notes.docx'),
         ],
         reveal: (paths) async => revealed.add(paths),
+        share: (paths, origin) async => shared.add(paths),
         settings: settings,
       ),
     );
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
+    // Desktops take documents dropped on the window; phones only choose them.
+    expect(find.text(canOpenFolders ? 'Drop Word documents here' : 'Choose Word documents'), findsOneWidget);
 
     await tester.tap(find.text('Choose files'));
     await pumpUntilFound(tester, find.text('hello-yangi.docx'));
+    // The documents convert one at a time, and notes.docx, which is not a Word document, comes last.
+    await pumpUntilFound(tester, find.textContaining('Not a Word document'));
     expect(find.text('hello-yangi.docx'), findsOneWidget);
     expect(find.textContaining('3 old letters, 2 Cyrillic words, 1 left as typed'), findsOneWidget);
     expect(find.text('notes.docx'), findsOneWidget);
@@ -53,36 +59,45 @@ void main() {
     final saved = await File('${folder.path}/hello-yangi.docx').readAsBytes();
     expect((await convertDocx(docx: saved)).summary.oldLetters, 0);
     await tester.pumpAndSettle();
-    // When the batch is done, the file manager shows what it saved.
+    // When the batch is done, the file manager shows what it saved. A phone has none, and shows nothing.
     expect(revealed, [
-      ['${folder.path}/hello-yangi.docx'],
+      if (canOpenFolders) ['${folder.path}/hello-yangi.docx'],
     ]);
 
     await tester.tap(find.text('Choose files'));
     await pumpUntilFound(tester, find.text('hello-yangi (1).docx'));
+    await pumpUntilFound(tester, find.textContaining('Not a Word document'), count: 2);
     expect(File('${folder.path}/hello-yangi.docx').readAsBytesSync(), saved);
     await tester.pumpAndSettle();
-    expect(revealed, hasLength(2));
+    expect(revealed, hasLength(canOpenFolders ? 2 : 0));
 
-    // After a restart the history is still there, and a document's own button shows it.
+    // After a restart the history is still there, and a document's own button shows it, or on a phone shares it.
     settings.open = false;
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
     expect(find.text('hello-yangi.docx'), findsOneWidget);
     expect(find.text('hello-yangi (1).docx'), findsOneWidget);
     expect(find.text('notes.docx'), findsNWidgets(2));
-    await tester.tap(find.byTooltip('Show in Finder').last);
-    expect(revealed.last, ['${folder.path}/hello-yangi.docx']);
+    final button = find.byTooltip(canOpenFolders ? 'Show in Finder' : 'Share').last;
+    await tester.ensureVisible(button);
+    await tester.pumpAndSettle();
+    await tester.tap(button);
+    expect((canOpenFolders ? revealed : shared).last, ['${folder.path}/hello-yangi.docx']);
 
     // With the setting off, nothing is shown when a batch is done.
+    await tester.ensureVisible(find.text('Choose files'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Choose files'));
     await pumpUntilFound(tester, find.text('hello-yangi (2).docx'));
+    await pumpUntilFound(tester, find.textContaining('Not a Word document'), count: 3);
     await tester.pumpAndSettle();
-    expect(revealed, hasLength(3));
+    expect(revealed, hasLength(canOpenFolders ? 3 : 0));
+    expect(shared, hasLength(canOpenFolders ? 0 : 1));
 
-    // The theme chosen in Settings is applied and kept.
+    // The theme chosen in Settings is applied and kept. Phones share the documents, so they have no folder settings.
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
+    expect(find.text('Open the folder when done'), canOpenFolders ? findsOneWidget : findsNothing);
     await tester.tap(find.text('Dark'));
     await tester.pumpAndSettle();
     expect(themeMode.value, ThemeMode.dark);
@@ -90,9 +105,9 @@ void main() {
   });
 }
 
-// Pumps frames until `finder` finds something: the conversion finishes outside the frames the test pumps.
-Future<void> pumpUntilFound(WidgetTester tester, Finder finder) async {
-  for (var tries = 0; tries < 100 && finder.evaluate().isEmpty; tries++) {
+// Pumps frames until `finder` finds `count` widgets: the conversion finishes outside the frames the test pumps.
+Future<void> pumpUntilFound(WidgetTester tester, Finder finder, {int count = 1}) async {
+  for (var tries = 0; tries < 100 && finder.evaluate().length < count; tries++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
 }

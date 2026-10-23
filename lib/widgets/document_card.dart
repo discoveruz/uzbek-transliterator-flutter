@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:yangi_alifbo/document.dart';
 
 /// One document and where it is: waiting, converting, saved or not converted, with a button to show it in the file
-/// manager once it is saved.
+/// manager, or to share it on a phone, once it is saved.
 class DocumentCard extends StatelessWidget {
-  const DocumentCard({super.key, required this.document, this.onReveal, this.revealLabel = 'Show in folder'});
+  const DocumentCard({
+    super.key,
+    required this.document,
+    this.onAction,
+    this.actionLabel = 'Show in folder',
+    this.actionIcon = Icons.folder_open_rounded,
+  });
 
   final Document document;
 
-  /// Shows the saved document in the file manager; no button when null.
-  final VoidCallback? onReveal;
-  final String revealLabel;
+  /// Shows the saved document in the file manager, or shares it; no button when null.
+  final VoidCallback? onAction;
+  final String actionLabel;
+  final IconData actionIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -69,13 +76,9 @@ class DocumentCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onReveal != null) ...[
+              if (onAction != null) ...[
                 const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  tooltip: revealLabel,
-                  onPressed: onReveal,
-                  icon: const Icon(Icons.folder_open_rounded, size: 20),
-                ),
+                IconButton.filledTonal(tooltip: actionLabel, onPressed: onAction, icon: Icon(actionIcon, size: 20)),
               ],
             ],
           ),

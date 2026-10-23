@@ -16,7 +16,7 @@ class DropZone extends StatelessWidget {
 
   final bool dragging;
 
-  /// Whether this platform can take dropped files; iOS cannot.
+  /// Whether this platform can take dropped files; phones cannot.
   final bool canDrop;
   final bool compact;
 
