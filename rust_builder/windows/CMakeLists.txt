@@ -9,7 +9,9 @@ set(PROJECT_NAME "rust_lib_yangi_alifbo")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
 include("../cargokit/cmake/cargokit.cmake")
-apply_cargokit(${PROJECT_NAME} ../../rust yangi_alifbo_flutter "")
+# Flutter reaches this folder through windows/flutter/ephemeral/.plugin_symlinks/rust_lib_yangi_alifbo/windows, and
+# Windows resolves ".." without following that link, so the path to rust/ climbs from there to the app's root.
+apply_cargokit(${PROJECT_NAME} ../../../../../../rust yangi_alifbo_flutter "")
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
