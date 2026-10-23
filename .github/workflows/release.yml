@@ -104,6 +104,8 @@ jobs:
         run: |
           flutter build windows --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
           mv build/windows/x64/runner/Release yangi-alifbo
+          # The app and the Rust library need the Visual C++ runtime, which not every PC has.
+          cp /c/Windows/System32/{msvcp140,vcruntime140,vcruntime140_1}.dll yangi-alifbo/
           7z a ${{ matrix.file }} yangi-alifbo
 
       - uses: actions/upload-artifact@v7
