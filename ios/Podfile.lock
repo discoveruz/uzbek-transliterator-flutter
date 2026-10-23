@@ -1,0 +1,34 @@
+PODS:
+  - file_selector_ios (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+  - integration_test (0.0.1):
+    - Flutter
+  - rust_lib_yangi_alifbo (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - file_selector_ios (from `.symlinks/plugins/file_selector_ios/ios`)
+  - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+  - rust_lib_yangi_alifbo (from `.symlinks/plugins/rust_lib_yangi_alifbo/ios`)
+
+EXTERNAL SOURCES:
+  file_selector_ios:
+    :path: ".symlinks/plugins/file_selector_ios/ios"
+  Flutter:
+    :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+  rust_lib_yangi_alifbo:
+    :path: ".symlinks/plugins/rust_lib_yangi_alifbo/ios"
+
+SPEC CHECKSUMS:
+  file_selector_ios: 8e1d792478f6af248b8b601e3e0f02eb74a19c02
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
+  rust_lib_yangi_alifbo: 51da499c62f7d5b70b9dffb0b42ddee715db54fa
+
+PODFILE CHECKSUM: 3ba3a73b1b12adcf321a227a745625fe0888cc82
+
+COCOAPODS: 1.17.0

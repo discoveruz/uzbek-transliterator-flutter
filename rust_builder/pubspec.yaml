@@ -1,0 +1,27 @@
+name: rust_lib_yangi_alifbo
+description: "Builds the Rust code in ../rust and bundles it with the Yangi alifbo app, on every platform."
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.13.1
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  plugin_platform_interface: ^2.0.2
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        ffiPlugin: true
+      ios:
+        ffiPlugin: true
+      linux:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+      windows:
+        ffiPlugin: true
