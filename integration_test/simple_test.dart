@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:yangi_alifbo/engine.dart';
 import 'package:yangi_alifbo/convert_page.dart';
 import 'package:yangi_alifbo/document.dart';
+import 'package:yangi_alifbo/limit.dart';
 import 'package:yangi_alifbo/settings.dart';
 
 void main() {
@@ -139,6 +140,79 @@ void main() {
     final again = await convertOffice(bytes: saved);
     expect((again.format, again.summary.oldLetters, again.summary.cyrillicWords), (OfficeFormat.xlsx, 0, 0));
   });
+
+  testWidgets('converts the scripts chosen under the drop zone, and a workbook only in the columns typed there', (
+    tester,
+  ) async {
+    final hello = (await rootBundle.load('integration_test/hello.docx')).buffer.asUint8List();
+    final workbook = (await rootBundle.load('integration_test/sample.xlsx')).buffer.asUint8List();
+    final folder = await Directory.systemTemp.createTemp('saved');
+    addTearDown(() => folder.delete(recursive: true));
+    final settings = _MemorySettings(folder);
+    Widget app() => MaterialApp(
+      home: ConvertPage(
+        key: UniqueKey(),
+        themeMode: ValueNotifier(ThemeMode.system),
+        pickDocuments: () async => [
+          XFile.fromData(hello, path: 'latin.docx'),
+          // A workbook with macros stays one.
+          XFile.fromData(workbook, path: 'book.xlsm'),
+        ],
+        reveal: (paths) async {},
+        share: (paths, origin) async {},
+        settings: settings,
+      ),
+    );
+    Future<void> tap(Finder finder) async {
+      await tester.ensureVisible(finder);
+      await tester.pumpAndSettle();
+      await tester.tap(finder);
+      await tester.pumpAndSettle();
+    }
+
+    FilterChip chip(String letters) =>
+        tester.widget<FilterChip>(find.ancestor(of: find.textContaining(letters), matching: find.byType(FilterChip)));
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    // Cyrillic off: old Latin is then the only script on, and stays on.
+    await tap(find.textContaining('Ў Ғ Ш Ч'));
+    expect((settings.scripts.oldLatin, settings.scripts.cyrillic), (true, false));
+    expect(chip('Oʻ Gʻ Sh Ch').onSelected, isNull);
+
+    // Only B and E of the first sheet, the Uzbek columns. Columns that are not letters are not kept.
+    await tap(find.text('Only some sheets and columns'));
+    final columns = find.widgetWithText(TextField, 'Columns');
+    await tester.enterText(columns, 'B, 2');
+    await tester.pumpAndSettle();
+    expect(find.text('Write columns as letters, such as B, D-E'), findsOneWidget);
+    expect(settings.limit.columns, isEmpty);
+    await tester.enterText(columns, 'B, E');
+    await tester.enterText(find.widgetWithText(TextField, 'Sheets'), "Ma'lumot");
+    await tester.pumpAndSettle();
+    expect(find.text('Write columns as letters, such as B, D-E'), findsNothing);
+    expect(settings.limit.on, isTrue);
+    expect(settings.limit.sheets, ["Ma'lumot"]);
+    expect(settings.limit.columns, [const Columns(first: 2, last: 2), const Columns(first: 5, last: 5)]);
+
+    await tap(find.text('Choose files'));
+    await pumpUntilFound(tester, find.text('book-yangi.xlsm'));
+    expect(find.text('latin-yangi.docx'), findsOneWidget);
+    // hello.docx has 3 old letters, 2 Cyrillic words and a link; the workbook's B column has 51 old letters.
+    expect(find.textContaining('3 old letters, 1 left as typed'), findsOneWidget);
+    expect(find.textContaining('51 old letters'), findsOneWidget);
+    final book = await convertOffice(bytes: await File('${folder.path}/book-yangi.xlsm').readAsBytes());
+    expect(book.format, OfficeFormat.xlsx);
+    // The Cyrillic of E, and all of the other columns and sheet, are still to convert.
+    expect(book.summary.cyrillicWords, greaterThan(0));
+
+    // After a restart the choices are still there.
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(chip('Ў Ғ Ш Ч').selected, isFalse);
+    expect(find.widgetWithText(TextField, 'B, E'), findsOneWidget);
+    expect(find.widgetWithText(TextField, "Ma'lumot"), findsOneWidget);
+  });
 }
 
 // Pumps frames until `finder` finds `count` widgets: the conversion finishes outside the frames the test pumps.
@@ -153,6 +227,8 @@ class _MemorySettings implements Settings {
 
   Directory folder;
   bool open = true;
+  Options scripts = const Options();
+  WorkbookLimit limit = const WorkbookLimit();
   ThemeMode theme = ThemeMode.system;
   List<Map<String, dynamic>> saved = [];
 
@@ -161,6 +237,18 @@ class _MemorySettings implements Settings {
 
   @override
   Future<void> setOpenFolderWhenDone(bool open) async => this.open = open;
+
+  @override
+  Future<Options> options() async => scripts;
+
+  @override
+  Future<void> setOptions(Options options) async => scripts = options;
+
+  @override
+  Future<WorkbookLimit> workbookLimit() async => limit;
+
+  @override
+  Future<void> setWorkbookLimit(WorkbookLimit limit) async => this.limit = limit;
 
   @override
   Future<ThemeMode> themeMode() async => theme;

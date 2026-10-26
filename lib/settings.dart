@@ -8,6 +8,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:yangi_alifbo/document.dart';
+import 'package:yangi_alifbo/engine.dart';
+import 'package:yangi_alifbo/limit.dart';
 
 /// Whether this platform has a file manager to show folders in: Finder, Explorer or the Linux one. Phones have none,
 /// and share the documents instead.
@@ -22,10 +24,13 @@ final String fileManager = Platform.isMacOS
 
 const _finder = MethodChannel('yangi_alifbo/finder');
 
-/// What the app keeps between runs: the choices made in Settings and the documents converted.
+/// What the app keeps between runs: the choices made in Settings and under the drop zone, and the documents converted.
 class Settings {
   const Settings();
 
+  static const _convertOldLatin = 'convertOldLatin';
+  static const _convertCyrillic = 'convertCyrillic';
+  static const _workbookLimit = 'workbookLimit';
   static const _openFolderWhenDone = 'openFolderWhenDone';
   static const _saveFolder = 'saveFolder';
   static const _saveFolderBookmark = 'saveFolderBookmark';
@@ -39,6 +44,35 @@ class Settings {
   Future<bool> openFolderWhenDone() async => await SharedPreferencesAsync().getBool(_openFolderWhenDone) ?? true;
 
   Future<void> setOpenFolderWhenDone(bool open) => SharedPreferencesAsync().setBool(_openFolderWhenDone, open);
+
+  /// Which scripts convert: old Latin letters (Oʻ, Gʻ, Sh, Ch), Cyrillic words, or both. Both unless one is turned off.
+  Future<Options> options() async {
+    final store = SharedPreferencesAsync();
+    return Options(
+      oldLatin: await store.getBool(_convertOldLatin) ?? true,
+      cyrillic: await store.getBool(_convertCyrillic) ?? true,
+    );
+  }
+
+  Future<void> setOptions(Options options) async {
+    final store = SharedPreferencesAsync();
+    await store.setBool(_convertOldLatin, options.oldLatin);
+    await store.setBool(_convertCyrillic, options.cyrillic);
+  }
+
+  /// Only some sheets and columns of each workbook, when it is on. Off unless turned on.
+  Future<WorkbookLimit> workbookLimit() async {
+    final saved = await SharedPreferencesAsync().getString(_workbookLimit);
+    if (saved == null) return const WorkbookLimit();
+    try {
+      return WorkbookLimit.fromJson(jsonDecode(saved));
+    } on FormatException {
+      return const WorkbookLimit();
+    }
+  }
+
+  Future<void> setWorkbookLimit(WorkbookLimit limit) =>
+      SharedPreferencesAsync().setString(_workbookLimit, jsonEncode(limit.toJson()));
 
   /// Whether the app is light, dark or follows the system. Follows the system unless chosen otherwise.
   Future<ThemeMode> themeMode() async {

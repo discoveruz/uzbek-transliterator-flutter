@@ -76,7 +76,7 @@ class DropZone extends StatelessWidget {
                   if (!compact) ...[
                     const SizedBox(height: 6),
                     Text(
-                      'As many as you like. Each one is saved in the new alphabet${saveTo == null ? '' : ' to $saveTo'}. In Excel files all the text is converted, Russian and English columns too.',
+                      'Of every kind, with macros and templates too, as many as you like. Each one is saved in the new alphabet${saveTo == null ? '' : ' to $saveTo'}. In Excel files all the text is converted, Russian and English columns too, unless you choose columns below.',
                       style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
                       textAlign: TextAlign.center,
                     ),

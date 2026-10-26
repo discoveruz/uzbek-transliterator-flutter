@@ -114,6 +114,52 @@ void main() {
     expect((summary.oldLetters, summary.cyrillicWords, summary.skipped), (3, 0, 1));
   });
 
+  // The Uzbek columns of the first sheet of the workbook: Latin in B, Cyrillic in E. Russian and English are in C and D.
+  const uzbekColumns = Scope(sheets: ["Ma'lumot"], columns: [Columns(first: 2, last: 2), Columns(first: 5, last: 5)]);
+  int total(ConvertedOffice converted) => converted.summary.oldLetters + converted.summary.cyrillicWords;
+
+  test('convertOffice limits a workbook to some sheets and columns', () async {
+    final whole = await convertOffice(bytes: xlsx);
+    final limited = await convertOffice(bytes: xlsx, scope: uzbekColumns);
+    expect(limited.format, OfficeFormat.xlsx);
+    expect(total(limited), allOf(greaterThan(0), lessThan(total(whole))));
+    // The rest is as it was, so converting it whole afterwards still finds old text.
+    expect(total(await convertOffice(bytes: limited.bytes)), greaterThan(0));
+    // Every column of one sheet, and one column of every sheet.
+    expect(
+      total(
+        await convertOffice(
+          bytes: xlsx,
+          scope: const Scope(sheets: ["ma'lumot"]),
+        ),
+      ),
+      lessThan(total(whole)),
+    );
+    expect(
+      total(
+        await convertOffice(
+          bytes: xlsx,
+          scope: const Scope(columns: [Columns(first: 2, last: 2)]),
+        ),
+      ),
+      lessThan(total(whole)),
+    );
+  });
+
+  test('a limit leaves Word documents whole, and turns old workbooks down', () async {
+    expect(total(await convertOffice(bytes: hello, scope: uzbekColumns)), total(await convertOffice(bytes: hello)));
+    expect(total(await convertOffice(bytes: doc, scope: uzbekColumns)), total(await convertOffice(bytes: doc)));
+    await expectLater(convertOffice(bytes: xls, scope: uzbekColumns), throwsA(OfficeError.cannotLimit));
+    await expectLater(
+      convertOffice(
+        bytes: xls,
+        scope: const Scope(sheets: ["Ma'lumot"]),
+      ),
+      throwsA(OfficeError.cannotLimit),
+    );
+    expect((await convertOffice(bytes: xls, scope: const Scope())).format, OfficeFormat.xls);
+  });
+
   test('convertOffice throws the reason a file is not converted', () async {
     await expectLater(convertOffice(bytes: utf8.encode('Toshkent')), throwsA(OfficeError.notOffice));
     await expectLater(convertOffice(bytes: Uint8List(0)), throwsA(OfficeError.notOffice));

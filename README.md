@@ -1,7 +1,8 @@
 # Yangi alifbo — Flutter app
 
 A Flutter app for Android, iOS, macOS, Windows and Linux that writes Uzbek Word and Excel files (.docx, .xlsx, .doc,
-.xls) in the new Latin alphabet (Ö, Ğ, Ş, Ç), from old Latin and from Cyrillic. The rules live in the Rust
+.xls, and the macro, template and add-in kinds .docm, .dotx, .dotm, .xlsm, .xltx, .xltm, .xlam) in the new Latin
+alphabet (Ö, Ğ, Ş, Ç), from old Latin and from Cyrillic. The rules live in the Rust
 [yangi-alifbo engine](https://github.com/discoveruz/uzbek-transliterator-engine), which the app calls through
 [flutter_rust_bridge](https://cjycode.com/flutter_rust_bridge/). The engine's README lists what converts and what
 stays as typed.
@@ -9,8 +10,11 @@ stays as typed.
 Choose Word and Excel files, as many as you like, or on a desktop drop them, or folders of them, on the window. Each one
 is converted in turn and saved as a new file of the same kind: `hujjat.docx` becomes `hujjat-yangi.docx`, then
 `hujjat-yangi (1).docx`, the way a browser names a download. The kind is read from the file's bytes, so a workbook named
-`.xls` that is really an `.xlsx` is saved as one. In Excel files all the text is converted, Russian and English columns
-too. The history keeps the saved files between runs. On a desktop a saved
+`.xls` that is really an `.xlsx` is saved as one, and a `.xlsm` stays a `.xlsm`. Under the drop zone, old Latin or
+Cyrillic can be turned off (one stays on), and Excel workbooks can be limited to some columns ("B, D-E") and sheets,
+such as the Uzbek columns of a workbook that has the same text in four languages; otherwise all the text of a workbook
+is converted, Russian and English columns too. Only a `.xlsx` can be limited: Word files convert whole, and an old
+`.xls` is turned down while the limit is on. The history keeps the saved files between runs. On a desktop a saved
 file's button shows it in Finder, Explorer or the file manager; on a phone it shares the document.
 
 ## Run it
@@ -38,13 +42,14 @@ The app id is `uz.yangialifbo.app` on every platform.
 | `lib/main.dart` | Starts the app, with its light and dark themes |
 | `lib/convert_page.dart` | The screen: choose or drop Word and Excel files, watch each one convert, show or share what was saved |
 | `lib/document.dart` | A document on its way through the queue, and how it is converted and named |
-| `lib/settings.dart` | What the app keeps between runs (save folder, "Open the folder when done", history), and showing files in Finder or Explorer, or sharing them on phones |
-| `lib/widgets/` | The drop zone and the document cards |
+| `lib/settings.dart` | What the app keeps between runs (scripts, limit of workbooks, save folder, "Open the folder when done", history), and showing files in Finder or Explorer, or sharing them on phones |
+| `lib/limit.dart` | The limit of workbooks to some sheets and columns, read from what people type ("B, D-E") |
+| `lib/widgets/` | The drop zone, the options under it and the document cards |
 | `lib/engine.dart` | The engine's functions, for the app's code to import |
 | `lib/src/rust/` | Bindings that flutter_rust_bridge generates; not edited by hand |
 | `rust/` | The Rust crate that exposes the engine to Dart (`rust/src/api/transliterator.rs`) |
 | `rust_builder/` | Builds `rust/` with cargokit and bundles it with the app on each platform |
-| `test/` | Calls the engine through the bridge |
+| `test/` | Calls the engine through the bridge, and reads typed limits |
 | `integration_test/` | Runs the app and converts Word and Excel files in it |
 
 `lib/engine.dart` gives `convert`, `analyze`, `apply`, `summarize`, `convertDocx` and `convertOffice`. Call `await RustLib.init()` once
@@ -52,7 +57,10 @@ before them, as `main()` does. A `Change`'s `start` and `end` index the Dart str
 `Options(cyrillic: false)` converts only one script. `convertDocx` throws `DocxError.notWord` for a file that is not a
 Word document, and `DocxError.damaged` for a broken one. `convertOffice` takes a Word or Excel file of any kind and gives
 the same kind back (`ConvertedOffice.format`); it throws an `OfficeError`: `notOffice`, `unsupported` (an .xlsb or a
-Word 6 file), `encrypted`, `damaged` or `refused` (something in the file that cannot be rewritten safely).
+Word 6 file), `encrypted`, `damaged`, `refused` (something in the file that cannot be rewritten safely) or
+`cannotLimit`. `scope: Scope(sheets: ["Ma'lumot"], columns: [Columns(first: 2, last: 2)])` limits a `.xlsx` to some
+sheets and columns (counted from 1, A is 1); a Word document converts whole whatever the scope, and an old `.xls` with a
+limit throws `cannotLimit`, as the engine converts it only whole.
 
 On a desktop, converted documents go to the app's own Documents folder (on macOS,
 `~/Library/Containers/uz.yangialifbo.app/Data/Documents`; on Windows and Linux, `Documents/Yangi alifbo`) until another

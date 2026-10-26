@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `dart_int`, `engine_change`, `engine_options`
+// These functions are ignored because they are not marked as `pub`: `dart_int`, `engine_change`, `engine_options`, `engine_scope`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`, `from`, `from`, `from`, `from`
 
 /// Writes the text in the new alphabet, leaving out the changes `analyze` marks as skipped.
@@ -48,15 +48,18 @@ Future<ConvertedDocx> convertDocx({
   options: options,
 );
 
-/// Writes the text of a Word or Excel file in the new alphabet, whatever kind it is: .docx, .xlsx, .doc or .xls. The kind
-/// is read from the bytes, not from a name. Everything else in the file stays as it was, and every text of a workbook
-/// converts.
+/// Writes the text of a Word or Excel file in the new alphabet, whatever kind it is: .docx, .xlsx, .doc or .xls, with
+/// their macro and template kinds. The kind is read from the bytes, not from a name. Everything else in the file stays
+/// as it was. `scope` limits a workbook (.xlsx) to some sheets and columns; a Word document has neither and converts
+/// whole, and an old workbook (.xls) with a limit gives `CannotLimit`, as the engine converts it only whole.
 Future<ConvertedOffice> convertOffice({
   required List<int> bytes,
   Options options = const Options(),
+  Scope scope = const Scope(),
 }) => RustLib.instance.api.crateApiTransliteratorConvertOffice(
   bytes: bytes,
   options: options,
+  scope: scope,
 );
 
 /// A word that the new alphabet spells differently. `start` and `end` are UTF-16 offsets.
@@ -103,6 +106,25 @@ class Change {
 
 /// What a change converts: a Latin word with old letters, or a Cyrillic word.
 enum ChangeKind { oldLatin, cyrillic }
+
+/// A run of columns, counted from 1 (A is 1).
+class Columns {
+  final int first;
+  final int last;
+
+  const Columns({required this.first, required this.last});
+
+  @override
+  int get hashCode => first.hashCode ^ last.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Columns &&
+          runtimeType == other.runtimeType &&
+          first == other.first &&
+          last == other.last;
+}
 
 /// A Word document with its text in the new alphabet, and what was converted.
 class ConvertedDocx {
@@ -176,6 +198,9 @@ enum OfficeError {
 
   /// A file with something in it that cannot be rewritten safely, such as tracked deletions in an old .doc.
   refused,
+
+  /// An old workbook (.xls) with a limit to some sheets or columns, which only a .xlsx can have.
+  cannotLimit,
 }
 
 /// What kind of file `convert_office` found, and wrote.
@@ -213,6 +238,28 @@ class Options {
           runtimeType == other.runtimeType &&
           oldLatin == other.oldLatin &&
           cyrillic == other.cyrillic;
+}
+
+/// Which text of a workbook to convert: only some sheets, only some columns, or both. A field left out means all.
+class Scope {
+  /// Only these sheets, by name, ignoring case.
+  final List<String>? sheets;
+
+  /// Only these columns, in the chosen sheets.
+  final List<Columns>? columns;
+
+  const Scope({this.sheets, this.columns});
+
+  @override
+  int get hashCode => sheets.hashCode ^ columns.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Scope &&
+          runtimeType == other.runtimeType &&
+          sheets == other.sheets &&
+          columns == other.columns;
 }
 
 /// Why a change is left as typed: part of a web address or e-mail, or a Latin word with a letter Uzbek does not use.

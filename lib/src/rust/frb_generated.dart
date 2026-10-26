@@ -104,6 +104,7 @@ abstract class RustLibApi extends BaseApi {
   Future<ConvertedOffice> crateApiTransliteratorConvertOffice({
     required List<int> bytes,
     Options options = const Options(),
+    Scope scope = const Scope(),
   });
 
   Future<void> crateApiTransliteratorInitApp();
@@ -256,6 +257,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Future<ConvertedOffice> crateApiTransliteratorConvertOffice({
     required List<int> bytes,
     Options options = const Options(),
+    Scope scope = const Scope(),
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -263,6 +265,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(bytes, serializer);
           sse_encode_box_autoadd_options(options, serializer);
+          sse_encode_box_autoadd_scope(scope, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -275,7 +278,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_office_error,
         ),
         constMeta: kCrateApiTransliteratorConvertOfficeConstMeta,
-        argValues: [bytes, options],
+        argValues: [bytes, options, scope],
         apiImpl: this,
       ),
     );
@@ -284,7 +287,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiTransliteratorConvertOfficeConstMeta =>
       const TaskConstMeta(
         debugName: "convert_office",
-        argNames: ["bytes", "options"],
+        argNames: ["bytes", "options", "scope"],
       );
 
   @override
@@ -363,6 +366,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Scope dco_decode_box_autoadd_scope(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_scope(raw);
+  }
+
+  @protected
   SkipReason dco_decode_box_autoadd_skip_reason(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_skip_reason(raw);
@@ -388,6 +397,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ChangeKind dco_decode_change_kind(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return ChangeKind.values[raw as int];
+  }
+
+  @protected
+  Columns dco_decode_columns(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return Columns(
+      first: dco_decode_u_32(arr[0]),
+      last: dco_decode_u_32(arr[1]),
+    );
   }
 
   @protected
@@ -428,9 +449,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
   List<Change> dco_decode_list_change(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_change).toList();
+  }
+
+  @protected
+  List<Columns> dco_decode_list_columns(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_columns).toList();
   }
 
   @protected
@@ -464,6 +497,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String>? dco_decode_opt_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_list_String(raw);
+  }
+
+  @protected
+  List<Columns>? dco_decode_opt_list_columns(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_list_columns(raw);
+  }
+
+  @protected
   Options dco_decode_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -472,6 +517,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return Options(
       oldLatin: dco_decode_bool(arr[0]),
       cyrillic: dco_decode_bool(arr[1]),
+    );
+  }
+
+  @protected
+  Scope dco_decode_scope(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return Scope(
+      sheets: dco_decode_opt_list_String(arr[0]),
+      columns: dco_decode_opt_list_columns(arr[1]),
     );
   }
 
@@ -532,6 +589,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Scope sse_decode_box_autoadd_scope(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_scope(deserializer));
+  }
+
+  @protected
   SkipReason sse_decode_box_autoadd_skip_reason(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_skip_reason(deserializer));
@@ -561,6 +624,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return ChangeKind.values[inner];
+  }
+
+  @protected
+  Columns sse_decode_columns(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_first = sse_decode_u_32(deserializer);
+    var var_last = sse_decode_u_32(deserializer);
+    return Columns(first: var_first, last: var_last);
   }
 
   @protected
@@ -598,6 +669,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<Change> sse_decode_list_change(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -605,6 +688,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <Change>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_change(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<Columns> sse_decode_list_columns(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <Columns>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_columns(deserializer));
     }
     return ans_;
   }
@@ -651,11 +746,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String>? sse_decode_opt_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_list_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  List<Columns>? sse_decode_opt_list_columns(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_list_columns(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   Options sse_decode_options(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_oldLatin = sse_decode_bool(deserializer);
     var var_cyrillic = sse_decode_bool(deserializer);
     return Options(oldLatin: var_oldLatin, cyrillic: var_cyrillic);
+  }
+
+  @protected
+  Scope sse_decode_scope(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_sheets = sse_decode_opt_list_String(deserializer);
+    var var_columns = sse_decode_opt_list_columns(deserializer);
+    return Scope(sheets: var_sheets, columns: var_columns);
   }
 
   @protected
@@ -714,6 +839,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_scope(Scope self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_scope(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_skip_reason(
     SkipReason self,
     SseSerializer serializer,
@@ -737,6 +868,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_change_kind(ChangeKind self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_columns(Columns self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.first, serializer);
+    sse_encode_u_32(self.last, serializer);
   }
 
   @protected
@@ -770,11 +908,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_change(List<Change> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_change(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_columns(List<Columns> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_columns(item, serializer);
     }
   }
 
@@ -826,10 +982,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_list_String(
+    List<String>? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_list_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_list_columns(
+    List<Columns>? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_list_columns(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_options(Options self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_bool(self.oldLatin, serializer);
     sse_encode_bool(self.cyrillic, serializer);
+  }
+
+  @protected
+  void sse_encode_scope(Scope self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_list_String(self.sheets, serializer);
+    sse_encode_opt_list_columns(self.columns, serializer);
   }
 
   @protected

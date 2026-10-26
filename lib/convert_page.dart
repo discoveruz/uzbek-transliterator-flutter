@@ -4,7 +4,10 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:yangi_alifbo/document.dart';
+import 'package:yangi_alifbo/engine.dart';
+import 'package:yangi_alifbo/limit.dart';
 import 'package:yangi_alifbo/settings.dart';
+import 'package:yangi_alifbo/widgets/convert_options.dart';
 import 'package:yangi_alifbo/widgets/document_card.dart';
 import 'package:yangi_alifbo/widgets/drop_zone.dart';
 
@@ -44,22 +47,12 @@ class ConvertPage extends StatefulWidget {
 }
 
 Future<List<XFile>> _pickDocuments() => openFiles(
-  acceptedTypeGroups: const [
+  acceptedTypeGroups: [
     XTypeGroup(
       label: 'Word and Excel',
       extensions: officeExtensions,
-      uniformTypeIdentifiers: [
-        'org.openxmlformats.wordprocessingml.document',
-        'org.openxmlformats.spreadsheetml.sheet',
-        'com.microsoft.word.doc',
-        'com.microsoft.excel.xls',
-      ],
-      mimeTypes: [
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/msword',
-        'application/vnd.ms-excel',
-      ],
+      uniformTypeIdentifiers: officeTypeIdentifiers,
+      mimeTypes: officeMimeTypes,
     ),
   ],
 );
@@ -80,6 +73,10 @@ class _ConvertPageState extends State<ConvertPage> {
   bool _converting = false;
   bool _dragging = false;
   bool _openFolderWhenDone = true;
+
+  /// The scripts that convert and the limit of workbooks, once they are read.
+  Options? _options;
+  WorkbookLimit? _limit;
   Directory? _folder;
   bool _folderIsDefault = true;
 
@@ -91,6 +88,12 @@ class _ConvertPageState extends State<ConvertPage> {
     });
     widget.settings.history().then((history) {
       if (mounted) setState(() => _done.addAll(history));
+    });
+    widget.settings.options().then((options) {
+      if (mounted) setState(() => _options = options);
+    });
+    widget.settings.workbookLimit().then((limit) {
+      if (mounted) setState(() => _limit = limit);
     });
     _loadFolder();
   }
@@ -141,7 +144,11 @@ class _ConvertPageState extends State<ConvertPage> {
     while (_queue.isNotEmpty && mounted) {
       final document = _queue.first;
       setState(() => document.status = DocumentStatus.converting);
-      await document.convertInto(folder);
+      await document.convertInto(
+        folder,
+        options: _options ?? const Options(),
+        scope: (_limit ?? const WorkbookLimit()).scope,
+      );
       if (document.path case final path?) saved.add(path);
       if (!mounted) return;
       setState(() {
@@ -302,6 +309,21 @@ class _ConvertPageState extends State<ConvertPage> {
                             : describeFolder(_folder!, isDefault: _folderIsDefault),
                         onChoose: _choose,
                       ),
+                      if ((_options, _limit) case (final options?, final limit?)) ...[
+                        const SizedBox(height: 16),
+                        ConvertOptions(
+                          options: options,
+                          limit: limit,
+                          onOptions: (options) {
+                            setState(() => _options = options);
+                            widget.settings.setOptions(options);
+                          },
+                          onLimit: (limit) {
+                            setState(() => _limit = limit);
+                            widget.settings.setWorkbookLimit(limit);
+                          },
+                        ),
+                      ],
                       if (_queue.isNotEmpty) ...[
                         const SizedBox(height: 28),
                         _Progress(done: _batch - _queue.length, total: _batch),

@@ -213,11 +213,15 @@ fn wire__crate__api__transliterator__convert_office_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_bytes = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_options = <crate::api::transliterator::Options>::sse_decode(&mut deserializer);
+            let api_scope = <crate::api::transliterator::Scope>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, crate::api::transliterator::OfficeError>((move || {
-                    let output_ok =
-                        crate::api::transliterator::convert_office(api_bytes, api_options)?;
+                    let output_ok = crate::api::transliterator::convert_office(
+                        api_bytes,
+                        api_options,
+                        api_scope,
+                    )?;
                     std::result::Result::Ok(output_ok)
                 })(
                 ))
@@ -345,6 +349,18 @@ impl SseDecode for crate::api::transliterator::ChangeKind {
     }
 }
 
+impl SseDecode for crate::api::transliterator::Columns {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_first = <u32>::sse_decode(deserializer);
+        let mut var_last = <u32>::sse_decode(deserializer);
+        return crate::api::transliterator::Columns {
+            first: var_first,
+            last: var_last,
+        };
+    }
+}
+
 impl SseDecode for crate::api::transliterator::ConvertedDocx {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -390,6 +406,18 @@ impl SseDecode for i32 {
     }
 }
 
+impl SseDecode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::transliterator::Change> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -397,6 +425,20 @@ impl SseDecode for Vec<crate::api::transliterator::Change> {
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
             ans_.push(<crate::api::transliterator::Change>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::transliterator::Columns> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::transliterator::Columns>::sse_decode(
                 deserializer,
             ));
         }
@@ -426,6 +468,7 @@ impl SseDecode for crate::api::transliterator::OfficeError {
             2 => crate::api::transliterator::OfficeError::Encrypted,
             3 => crate::api::transliterator::OfficeError::Damaged,
             4 => crate::api::transliterator::OfficeError::Refused,
+            5 => crate::api::transliterator::OfficeError::CannotLimit,
             _ => unreachable!("Invalid variant for OfficeError: {}", inner),
         };
     }
@@ -458,6 +501,30 @@ impl SseDecode for Option<crate::api::transliterator::SkipReason> {
     }
 }
 
+impl SseDecode for Option<Vec<String>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Vec<String>>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<Vec<crate::api::transliterator::Columns>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Vec<crate::api::transliterator::Columns>>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for crate::api::transliterator::Options {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -466,6 +533,19 @@ impl SseDecode for crate::api::transliterator::Options {
         return crate::api::transliterator::Options {
             old_latin: var_oldLatin,
             cyrillic: var_cyrillic,
+        };
+    }
+}
+
+impl SseDecode for crate::api::transliterator::Scope {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_sheets = <Option<Vec<String>>>::sse_decode(deserializer);
+        let mut var_columns =
+            <Option<Vec<crate::api::transliterator::Columns>>>::sse_decode(deserializer);
+        return crate::api::transliterator::Scope {
+            sheets: var_sheets,
+            columns: var_columns,
         };
     }
 }
@@ -598,6 +678,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::ChangeKind>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::transliterator::Columns {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.first.into_into_dart().into_dart(),
+            self.last.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::transliterator::Columns
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::Columns>
+    for crate::api::transliterator::Columns
+{
+    fn into_into_dart(self) -> crate::api::transliterator::Columns {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::transliterator::ConvertedDocx {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -670,6 +771,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::transliterator::OfficeError {
             Self::Encrypted => 2.into_dart(),
             Self::Damaged => 3.into_dart(),
             Self::Refused => 4.into_dart(),
+            Self::CannotLimit => 5.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -726,6 +828,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::Options>
     for crate::api::transliterator::Options
 {
     fn into_into_dart(self) -> crate::api::transliterator::Options {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::transliterator::Scope {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.sheets.into_into_dart().into_dart(),
+            self.columns.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::transliterator::Scope
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::Scope>
+    for crate::api::transliterator::Scope
+{
+    fn into_into_dart(self) -> crate::api::transliterator::Scope {
         self
     }
 }
@@ -815,6 +938,14 @@ impl SseEncode for crate::api::transliterator::ChangeKind {
     }
 }
 
+impl SseEncode for crate::api::transliterator::Columns {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.first, serializer);
+        <u32>::sse_encode(self.last, serializer);
+    }
+}
+
 impl SseEncode for crate::api::transliterator::ConvertedDocx {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -855,12 +986,32 @@ impl SseEncode for i32 {
     }
 }
 
+impl SseEncode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::transliterator::Change> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <crate::api::transliterator::Change>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::transliterator::Columns> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::transliterator::Columns>::sse_encode(item, serializer);
         }
     }
 }
@@ -885,6 +1036,7 @@ impl SseEncode for crate::api::transliterator::OfficeError {
                 crate::api::transliterator::OfficeError::Encrypted => 2,
                 crate::api::transliterator::OfficeError::Damaged => 3,
                 crate::api::transliterator::OfficeError::Refused => 4,
+                crate::api::transliterator::OfficeError::CannotLimit => 5,
                 _ => {
                     unimplemented!("");
                 }
@@ -922,11 +1074,39 @@ impl SseEncode for Option<crate::api::transliterator::SkipReason> {
     }
 }
 
+impl SseEncode for Option<Vec<String>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Vec<String>>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<Vec<crate::api::transliterator::Columns>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Vec<crate::api::transliterator::Columns>>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for crate::api::transliterator::Options {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.old_latin, serializer);
         <bool>::sse_encode(self.cyrillic, serializer);
+    }
+}
+
+impl SseEncode for crate::api::transliterator::Scope {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Option<Vec<String>>>::sse_encode(self.sheets, serializer);
+        <Option<Vec<crate::api::transliterator::Columns>>>::sse_encode(self.columns, serializer);
     }
 }
 

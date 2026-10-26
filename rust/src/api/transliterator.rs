@@ -1,6 +1,7 @@
 //! The yangi-alifbo engine for Dart. It has the same four functions, and its offsets count UTF-16 code units, the way
 //! Dart strings index, so `text.substring(change.start, change.end)` is `change.original`. `convert_docx` converts a
-//! Word document, and `convert_office` any Word or Excel file, old or new.
+//! Word document, and `convert_office` any Word or Excel file, old or new, a workbook limited to some sheets and
+//! columns if asked.
 
 use flutter_rust_bridge::frb;
 use yangi_alifbo::utf16;
@@ -61,6 +62,23 @@ pub enum DocxError {
     Damaged,
 }
 
+/// Which text of a workbook to convert: only some sheets, only some columns, or both. A field left out means all.
+#[frb]
+pub struct Scope {
+    /// Only these sheets, by name, ignoring case.
+    #[frb(default = "null")]
+    pub sheets: Option<Vec<String>>,
+    /// Only these columns, in the chosen sheets.
+    #[frb(default = "null")]
+    pub columns: Option<Vec<Columns>>,
+}
+
+/// A run of columns, counted from 1 (A is 1).
+pub struct Columns {
+    pub first: u32,
+    pub last: u32,
+}
+
 /// What kind of file `convert_office` found, and wrote.
 pub enum OfficeFormat {
     /// Word: .docx.
@@ -93,6 +111,8 @@ pub enum OfficeError {
     Damaged,
     /// A file with something in it that cannot be rewritten safely, such as tracked deletions in an old .doc.
     Refused,
+    /// An old workbook (.xls) with a limit to some sheets or columns, which only a .xlsx can have.
+    CannotLimit,
 }
 
 /// Writes the text in the new alphabet, leaving out the changes `analyze` marks as skipped.
@@ -167,17 +187,26 @@ pub fn convert_docx(
     })
 }
 
-/// Writes the text of a Word or Excel file in the new alphabet, whatever kind it is: .docx, .xlsx, .doc or .xls. The kind
-/// is read from the bytes, not from a name. Everything else in the file stays as it was, and every text of a workbook
-/// converts.
+/// Writes the text of a Word or Excel file in the new alphabet, whatever kind it is: .docx, .xlsx, .doc or .xls, with
+/// their macro and template kinds. The kind is read from the bytes, not from a name. Everything else in the file stays
+/// as it was. `scope` limits a workbook (.xlsx) to some sheets and columns; a Word document has neither and converts
+/// whole, and an old workbook (.xls) with a limit gives `CannotLimit`, as the engine converts it only whole.
 #[frb]
 pub fn convert_office(
     bytes: Vec<u8>,
     #[frb(default = "const Options()")] options: Options,
+    #[frb(default = "const Scope()")] scope: Scope,
 ) -> Result<ConvertedOffice, OfficeError> {
     use yangi_alifbo::office::{self, Error, Format};
 
-    let output = office::convert(&bytes, engine_options(options)).map_err(|error| match error {
+    let options = engine_options(options);
+    let limited = scope.sheets.is_some() || scope.columns.is_some();
+    let converted = match office::detect(&bytes) {
+        Ok(Format::Xlsx) => office::convert_in(&bytes, options, &engine_scope(scope)),
+        Ok(Format::Xls) if limited => return Err(OfficeError::CannotLimit),
+        _ => office::convert(&bytes, options),
+    };
+    let output = converted.map_err(|error| match error {
         Error::Not(_) | Error::Unknown => OfficeError::NotOffice,
         Error::Unsupported(_) => OfficeError::Unsupported,
         Error::Encrypted => OfficeError::Encrypted,
@@ -207,6 +236,20 @@ fn engine_options(options: Options) -> yangi_alifbo::Options {
     yangi_alifbo::Options {
         old_latin: options.old_latin,
         cyrillic: options.cyrillic,
+    }
+}
+
+fn engine_scope(scope: Scope) -> yangi_alifbo::office::Scope {
+    yangi_alifbo::office::Scope {
+        sheets: scope.sheets,
+        columns: scope.columns.map(|runs| {
+            runs.into_iter()
+                .map(|run| yangi_alifbo::office::Columns {
+                    first: run.first,
+                    last: run.last,
+                })
+                .collect()
+        }),
     }
 }
 

@@ -57,13 +57,13 @@ class Document {
   bool get finished => status == DocumentStatus.saved || status == DocumentStatus.failed;
 
   /// Converts the file and saves it in `folder`, next to what is there, as the kind of file the engine found in its
-  /// bytes, whatever the name says.
-  Future<void> convertInto(Directory folder) async {
+  /// bytes, whatever the name says. Only the scripts in `options` convert, and a workbook only within `scope`.
+  Future<void> convertInto(Directory folder, {Options options = const Options(), Scope scope = const Scope()}) async {
     status = DocumentStatus.converting;
     try {
-      final converted = await convertOffice(bytes: await _read());
+      final converted = await convertOffice(bytes: await _read(), options: options, scope: scope);
       await folder.create(recursive: true);
-      final saved = _freeName(folder, name, converted.format.name);
+      final saved = _freeName(folder, name, converted.format);
       final file = await File('${folder.path}/$saved').writeAsBytes(converted.bytes, flush: true);
       name = saved;
       path = file.path;
@@ -102,10 +102,66 @@ const _failures = {
   OfficeError.encrypted: 'The file is password-protected',
   OfficeError.damaged: 'The file is damaged',
   OfficeError.refused: 'The file cannot be changed safely',
+  OfficeError.cannotLimit: 'An old .xls workbook cannot be limited. Turn the limit off to convert it whole.',
+};
+
+// The kinds of file that are converted, by the extension each is chosen by: the format the engine finds in such a
+// file, its MIME type, and its type identifier on Apple's systems (.xlam has one only where Excel is installed). A Word
+// or Excel file with macros, or a template or an add-in, is the same format as a plain one, and keeps its extension.
+const _kinds = {
+  'docx': (
+    OfficeFormat.docx,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'org.openxmlformats.wordprocessingml.document',
+  ),
+  'docm': (
+    OfficeFormat.docx,
+    'application/vnd.ms-word.document.macroEnabled.12',
+    'org.openxmlformats.wordprocessingml.document.macroenabled',
+  ),
+  'dotx': (
+    OfficeFormat.docx,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
+    'org.openxmlformats.wordprocessingml.template',
+  ),
+  'dotm': (
+    OfficeFormat.docx,
+    'application/vnd.ms-word.template.macroEnabled.12',
+    'org.openxmlformats.wordprocessingml.template.macroenabled',
+  ),
+  'xlsx': (
+    OfficeFormat.xlsx,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'org.openxmlformats.spreadsheetml.sheet',
+  ),
+  'xlsm': (
+    OfficeFormat.xlsx,
+    'application/vnd.ms-excel.sheet.macroEnabled.12',
+    'org.openxmlformats.spreadsheetml.sheet.macroenabled',
+  ),
+  'xltx': (
+    OfficeFormat.xlsx,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+    'org.openxmlformats.spreadsheetml.template',
+  ),
+  'xltm': (
+    OfficeFormat.xlsx,
+    'application/vnd.ms-excel.template.macroEnabled.12',
+    'org.openxmlformats.spreadsheetml.template.macroenabled',
+  ),
+  'xlam': (OfficeFormat.xlsx, 'application/vnd.ms-excel.addin.macroEnabled.12', 'com.microsoft.excel.openxml.addin'),
+  'doc': (OfficeFormat.doc, 'application/msword', 'com.microsoft.word.doc'),
+  'xls': (OfficeFormat.xls, 'application/vnd.ms-excel', 'com.microsoft.excel.xls'),
 };
 
 /// The kinds of file that are converted, by the extension each is chosen by.
-const officeExtensions = ['docx', 'xlsx', 'doc', 'xls'];
+final officeExtensions = _kinds.keys.toList();
+
+/// The same kinds by MIME type, for the file chooser of Android.
+final officeMimeTypes = [for (final (_, mime, _) in _kinds.values) mime];
+
+/// The same kinds by type identifier, for the file chooser of iOS and macOS.
+final officeTypeIdentifiers = [for (final (_, _, identifier) in _kinds.values) identifier];
 
 /// The extension of `name` in lower case, without the dot: `docx` for `Hujjat.DOCX`, and an empty text for no extension.
 String _extensionOf(String name) {
@@ -114,7 +170,7 @@ String _extensionOf(String name) {
 }
 
 /// Whether `name` looks like a Word or Excel file worth reading.
-bool isOffice(String name) => officeExtensions.contains(_extensionOf(name));
+bool isOffice(String name) => _kinds.containsKey(_extensionOf(name));
 
 /// The documents for what was dropped: files as they are, and the Word and Excel files anywhere inside dropped folders.
 Future<List<Document>> documentsFromDrop(List<DropItem> items) async {
@@ -153,10 +209,13 @@ Future<List<Document>> _officeDocumentsIn(Directory folder, Uint8List? bookmark)
 }
 
 // A name in `folder` that no file has yet, for the new version of the file `name`: hujjat.docx is saved as
-// hujjat-yangi.docx, then as hujjat-yangi (1).docx, the way a browser names a download. `extension` is that of the kind
-// of file the engine found.
-String _freeName(Directory folder, String name, String extension) {
-  final stem = isOffice(name) ? name.substring(0, name.length - _extensionOf(name).length - 1) : name;
+// hujjat-yangi.docx, then as hujjat-yangi (1).docx, the way a browser names a download. The extension is the file's
+// own when it names the `format` the engine found, so hisobot.xlsm stays a .xlsm, and that format's otherwise, so a
+// workbook named .xls that is a .xlsx is saved as one.
+String _freeName(Directory folder, String name, OfficeFormat format) {
+  final own = _extensionOf(name);
+  final stem = isOffice(name) ? name.substring(0, name.length - own.length - 1) : name;
+  final extension = _kinds[own]?.$1 == format ? own : format.name;
   for (var copy = 0; ; copy++) {
     final free = '$stem-yangi${copy == 0 ? '' : ' ($copy)'}.$extension';
     if (!File('${folder.path}/$free').existsSync()) return free;

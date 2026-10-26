@@ -33,6 +33,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Options dco_decode_box_autoadd_options(dynamic raw);
 
   @protected
+  Scope dco_decode_box_autoadd_scope(dynamic raw);
+
+  @protected
   SkipReason dco_decode_box_autoadd_skip_reason(dynamic raw);
 
   @protected
@@ -40,6 +43,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ChangeKind dco_decode_change_kind(dynamic raw);
+
+  @protected
+  Columns dco_decode_columns(dynamic raw);
 
   @protected
   ConvertedDocx dco_decode_converted_docx(dynamic raw);
@@ -54,7 +60,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_32(dynamic raw);
 
   @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
   List<Change> dco_decode_list_change(dynamic raw);
+
+  @protected
+  List<Columns> dco_decode_list_columns(dynamic raw);
 
   @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
@@ -72,7 +84,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SkipReason? dco_decode_opt_box_autoadd_skip_reason(dynamic raw);
 
   @protected
+  List<String>? dco_decode_opt_list_String(dynamic raw);
+
+  @protected
+  List<Columns>? dco_decode_opt_list_columns(dynamic raw);
+
+  @protected
   Options dco_decode_options(dynamic raw);
+
+  @protected
+  Scope dco_decode_scope(dynamic raw);
 
   @protected
   SkipReason dco_decode_skip_reason(dynamic raw);
@@ -99,6 +120,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Options sse_decode_box_autoadd_options(SseDeserializer deserializer);
 
   @protected
+  Scope sse_decode_box_autoadd_scope(SseDeserializer deserializer);
+
+  @protected
   SkipReason sse_decode_box_autoadd_skip_reason(SseDeserializer deserializer);
 
   @protected
@@ -106,6 +130,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ChangeKind sse_decode_change_kind(SseDeserializer deserializer);
+
+  @protected
+  Columns sse_decode_columns(SseDeserializer deserializer);
 
   @protected
   ConvertedDocx sse_decode_converted_docx(SseDeserializer deserializer);
@@ -120,7 +147,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
   List<Change> sse_decode_list_change(SseDeserializer deserializer);
+
+  @protected
+  List<Columns> sse_decode_list_columns(SseDeserializer deserializer);
 
   @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
@@ -140,7 +173,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<String>? sse_decode_opt_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<Columns>? sse_decode_opt_list_columns(SseDeserializer deserializer);
+
+  @protected
   Options sse_decode_options(SseDeserializer deserializer);
+
+  @protected
+  Scope sse_decode_scope(SseDeserializer deserializer);
 
   @protected
   SkipReason sse_decode_skip_reason(SseDeserializer deserializer);
@@ -167,6 +209,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_options(Options self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_scope(Scope self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_skip_reason(
     SkipReason self,
     SseSerializer serializer,
@@ -177,6 +222,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_change_kind(ChangeKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_columns(Columns self, SseSerializer serializer);
 
   @protected
   void sse_encode_converted_docx(ConvertedDocx self, SseSerializer serializer);
@@ -194,7 +242,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_change(List<Change> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_columns(List<Columns> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
@@ -218,7 +272,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_list_String(List<String>? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_columns(
+    List<Columns>? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_options(Options self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_scope(Scope self, SseSerializer serializer);
 
   @protected
   void sse_encode_skip_reason(SkipReason self, SseSerializer serializer);
