@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-/// The place to drop Word documents on, with a button to choose them instead. It lights up while something is dragged
+/// The place to drop Word and Excel files on, with a button to choose them instead. It lights up while something is dragged
 /// over the window, and is smaller once there are documents to show below it.
 class DropZone extends StatelessWidget {
   const DropZone({
@@ -68,15 +68,15 @@ class DropZone extends StatelessWidget {
                     dragging
                         ? 'Drop to convert'
                         : canDrop
-                        ? 'Drop Word documents here'
-                        : 'Choose Word documents',
+                        ? 'Drop Word and Excel files here'
+                        : 'Choose Word and Excel files',
                     style: (compact ? text.titleMedium : text.titleLarge)?.copyWith(fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center,
                   ),
                   if (!compact) ...[
                     const SizedBox(height: 6),
                     Text(
-                      'As many as you like. Each one is saved in the new alphabet${saveTo == null ? '' : ' to $saveTo'}.',
+                      'As many as you like. Each one is saved in the new alphabet${saveTo == null ? '' : ' to $saveTo'}. In Excel files all the text is converted, Russian and English columns too.',
                       style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
                       textAlign: TextAlign.center,
                     ),

@@ -8,7 +8,7 @@ import 'package:yangi_alifbo/settings.dart';
 import 'package:yangi_alifbo/widgets/document_card.dart';
 import 'package:yangi_alifbo/widgets/drop_zone.dart';
 
-/// Converts the Word documents dropped on it or chosen, one after another, saves them in the new alphabet, and keeps
+/// Converts the Word and Excel files dropped on it or chosen, one after another, saves them in the new alphabet, and keeps
 /// a history of them.
 class ConvertPage extends StatefulWidget {
   const ConvertPage({
@@ -21,7 +21,7 @@ class ConvertPage extends StatefulWidget {
     this.settings = const Settings(),
   });
 
-  /// Asks which Word documents to convert.
+  /// Asks which Word and Excel files to convert.
   final Future<List<XFile>> Function() pickDocuments;
 
   /// Asks which folder to save the documents in; null when none is chosen.
@@ -46,9 +46,20 @@ class ConvertPage extends StatefulWidget {
 Future<List<XFile>> _pickDocuments() => openFiles(
   acceptedTypeGroups: const [
     XTypeGroup(
-      label: 'Word',
-      extensions: ['docx'],
-      uniformTypeIdentifiers: ['org.openxmlformats.wordprocessingml.document'],
+      label: 'Word and Excel',
+      extensions: officeExtensions,
+      uniformTypeIdentifiers: [
+        'org.openxmlformats.wordprocessingml.document',
+        'org.openxmlformats.spreadsheetml.sheet',
+        'com.microsoft.word.doc',
+        'com.microsoft.excel.xls',
+      ],
+      mimeTypes: [
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/msword',
+        'application/vnd.ms-excel',
+      ],
     ),
   ],
 );
@@ -98,7 +109,7 @@ class _ConvertPageState extends State<ConvertPage> {
 
   Future<void> _choose() async {
     final files = await widget.pickDocuments();
-    _add([for (final file in files) isWord(file.name) ? Document(file) : Document.notWord(file.name)]);
+    _add([for (final file in files) isOffice(file.name) ? Document(file) : Document.notOffice(file.name)]);
   }
 
   Future<void> _drop(DropDoneDetails details) async {

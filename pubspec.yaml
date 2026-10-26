@@ -35,3 +35,4 @@ flutter:
   # The Word document that integration_test/simple_test.dart converts.
   assets:
     - integration_test/hello.docx
+    - integration_test/sample.xlsx

@@ -1,6 +1,6 @@
 //! The yangi-alifbo engine for Dart. It has the same four functions, and its offsets count UTF-16 code units, the way
 //! Dart strings index, so `text.substring(change.start, change.end)` is `change.original`. `convert_docx` converts a
-//! Word document.
+//! Word document, and `convert_office` any Word or Excel file, old or new.
 
 use flutter_rust_bridge::frb;
 use yangi_alifbo::utf16;
@@ -59,6 +59,40 @@ pub enum DocxError {
     NotWord,
     /// A Word document whose zip file or XML is broken.
     Damaged,
+}
+
+/// What kind of file `convert_office` found, and wrote.
+pub enum OfficeFormat {
+    /// Word: .docx.
+    Docx,
+    /// Excel: .xlsx.
+    Xlsx,
+    /// Excel 97–2003: .xls.
+    Xls,
+    /// Word 97–2003: .doc.
+    Doc,
+}
+
+/// A Word or Excel file with its text in the new alphabet, and what was converted.
+pub struct ConvertedOffice {
+    pub format: OfficeFormat,
+    /// The converted file, of the same kind as the one given.
+    pub bytes: Vec<u8>,
+    pub summary: Summary,
+}
+
+/// Why a Word or Excel file could not be converted.
+pub enum OfficeError {
+    /// Not a Word or Excel file.
+    NotOffice,
+    /// A kind of file that is not converted, such as an Excel binary workbook (.xlsb) or a Word 6 or 95 document.
+    Unsupported,
+    /// A password-protected file.
+    Encrypted,
+    /// A file whose zip file, XML or records are broken.
+    Damaged,
+    /// A file with something in it that cannot be rewritten safely, such as tracked deletions in an old .doc.
+    Refused,
 }
 
 /// Writes the text in the new alphabet, leaving out the changes `analyze` marks as skipped.
@@ -130,6 +164,37 @@ pub fn convert_docx(
     Ok(ConvertedDocx {
         summary: converted.summary().into(),
         docx: converted.docx,
+    })
+}
+
+/// Writes the text of a Word or Excel file in the new alphabet, whatever kind it is: .docx, .xlsx, .doc or .xls. The kind
+/// is read from the bytes, not from a name. Everything else in the file stays as it was, and every text of a workbook
+/// converts.
+#[frb]
+pub fn convert_office(
+    bytes: Vec<u8>,
+    #[frb(default = "const Options()")] options: Options,
+) -> Result<ConvertedOffice, OfficeError> {
+    use yangi_alifbo::office::{self, Error, Format};
+
+    let output = office::convert(&bytes, engine_options(options)).map_err(|error| match error {
+        Error::Not(_) | Error::Unknown => OfficeError::NotOffice,
+        Error::Unsupported(_) => OfficeError::Unsupported,
+        Error::Encrypted => OfficeError::Encrypted,
+        Error::Refused(_) => OfficeError::Refused,
+        _ => OfficeError::Damaged,
+    })?;
+    let format = match output.format {
+        Format::Docx => OfficeFormat::Docx,
+        Format::Xlsx => OfficeFormat::Xlsx,
+        Format::Xls => OfficeFormat::Xls,
+        Format::Doc => OfficeFormat::Doc,
+        _ => return Err(OfficeError::Damaged),
+    };
+    Ok(ConvertedOffice {
+        format,
+        summary: output.summary().into(),
+        bytes: output.bytes,
     })
 }
 

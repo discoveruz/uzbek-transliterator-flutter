@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 1552170853;
+  int get rustContentHash => -997895934;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -98,6 +98,11 @@ abstract class RustLibApi extends BaseApi {
 
   Future<ConvertedDocx> crateApiTransliteratorConvertDocx({
     required List<int> docx,
+    Options options = const Options(),
+  });
+
+  Future<ConvertedOffice> crateApiTransliteratorConvertOffice({
+    required List<int> bytes,
     Options options = const Options(),
   });
 
@@ -248,6 +253,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<ConvertedOffice> crateApiTransliteratorConvertOffice({
+    required List<int> bytes,
+    Options options = const Options(),
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(bytes, serializer);
+          sse_encode_box_autoadd_options(options, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_converted_office,
+          decodeErrorData: sse_decode_office_error,
+        ),
+        constMeta: kCrateApiTransliteratorConvertOfficeConstMeta,
+        argValues: [bytes, options],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTransliteratorConvertOfficeConstMeta =>
+      const TaskConstMeta(
+        debugName: "convert_office",
+        argNames: ["bytes", "options"],
+      );
+
+  @override
   Future<void> crateApiTransliteratorInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -256,7 +296,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -286,7 +326,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -363,6 +403,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ConvertedOffice dco_decode_converted_office(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ConvertedOffice(
+      format: dco_decode_office_format(arr[0]),
+      bytes: dco_decode_list_prim_u_8_strict(arr[1]),
+      summary: dco_decode_summary(arr[2]),
+    );
+  }
+
+  @protected
   DocxError dco_decode_docx_error(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return DocxError.values[raw as int];
@@ -390,6 +443,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  OfficeError dco_decode_office_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return OfficeError.values[raw as int];
+  }
+
+  @protected
+  OfficeFormat dco_decode_office_format(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return OfficeFormat.values[raw as int];
   }
 
   @protected
@@ -507,6 +572,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ConvertedOffice sse_decode_converted_office(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_format = sse_decode_office_format(deserializer);
+    var var_bytes = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_summary = sse_decode_summary(deserializer);
+    return ConvertedOffice(
+      format: var_format,
+      bytes: var_bytes,
+      summary: var_summary,
+    );
+  }
+
+  @protected
   DocxError sse_decode_docx_error(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
@@ -543,6 +621,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  OfficeError sse_decode_office_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return OfficeError.values[inner];
+  }
+
+  @protected
+  OfficeFormat sse_decode_office_format(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return OfficeFormat.values[inner];
   }
 
   @protected
@@ -655,6 +747,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_converted_office(
+    ConvertedOffice self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_office_format(self.format, serializer);
+    sse_encode_list_prim_u_8_strict(self.bytes, serializer);
+    sse_encode_summary(self.summary, serializer);
+  }
+
+  @protected
   void sse_encode_docx_error(DocxError self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
@@ -695,6 +798,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_office_error(OfficeError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_office_format(OfficeFormat self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected

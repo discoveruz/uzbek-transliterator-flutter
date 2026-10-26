@@ -48,6 +48,17 @@ Future<ConvertedDocx> convertDocx({
   options: options,
 );
 
+/// Writes the text of a Word or Excel file in the new alphabet, whatever kind it is: .docx, .xlsx, .doc or .xls. The kind
+/// is read from the bytes, not from a name. Everything else in the file stays as it was, and every text of a workbook
+/// converts.
+Future<ConvertedOffice> convertOffice({
+  required List<int> bytes,
+  Options options = const Options(),
+}) => RustLib.instance.api.crateApiTransliteratorConvertOffice(
+  bytes: bytes,
+  options: options,
+);
+
 /// A word that the new alphabet spells differently. `start` and `end` are UTF-16 offsets.
 class Change {
   final ChangeKind kind;
@@ -113,6 +124,33 @@ class ConvertedDocx {
           summary == other.summary;
 }
 
+/// A Word or Excel file with its text in the new alphabet, and what was converted.
+class ConvertedOffice {
+  final OfficeFormat format;
+
+  /// The converted file, of the same kind as the one given.
+  final Uint8List bytes;
+  final Summary summary;
+
+  const ConvertedOffice({
+    required this.format,
+    required this.bytes,
+    required this.summary,
+  });
+
+  @override
+  int get hashCode => format.hashCode ^ bytes.hashCode ^ summary.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConvertedOffice &&
+          runtimeType == other.runtimeType &&
+          format == other.format &&
+          bytes == other.bytes &&
+          summary == other.summary;
+}
+
 /// Why a Word document could not be converted.
 enum DocxError {
   /// Not a Word document: not a zip file, or one without a Word body, such as an old .doc or a password-protected file.
@@ -120,6 +158,39 @@ enum DocxError {
 
   /// A Word document whose zip file or XML is broken.
   damaged,
+}
+
+/// Why a Word or Excel file could not be converted.
+enum OfficeError {
+  /// Not a Word or Excel file.
+  notOffice,
+
+  /// A kind of file that is not converted, such as an Excel binary workbook (.xlsb) or a Word 6 or 95 document.
+  unsupported,
+
+  /// A password-protected file.
+  encrypted,
+
+  /// A file whose zip file, XML or records are broken.
+  damaged,
+
+  /// A file with something in it that cannot be rewritten safely, such as tracked deletions in an old .doc.
+  refused,
+}
+
+/// What kind of file `convert_office` found, and wrote.
+enum OfficeFormat {
+  /// Word: .docx.
+  docx,
+
+  /// Excel: .xlsx.
+  xlsx,
+
+  /// Excel 97–2003: .xls.
+  xls,
+
+  /// Word 97–2003: .doc.
+  doc,
 }
 
 /// Which scripts to convert. Both, unless told otherwise.

@@ -8,7 +8,7 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 flutter_rust_bridge = "=2.13.0"
-yangi-alifbo = { git = "https://github.com/discoveruz/uzbek-transliterator-engine", tag = "v0.1.0" }
+yangi-alifbo = { git = "https://github.com/discoveruz/uzbek-transliterator-engine", tag = "v0.2.0", features = ["docx", "xlsx", "xls", "doc"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

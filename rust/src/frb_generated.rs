@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1552170853;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -997895934;
 
 // Section: executor
 
@@ -189,6 +189,42 @@ fn wire__crate__api__transliterator__convert_docx_impl(
         },
     )
 }
+fn wire__crate__api__transliterator__convert_office_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "convert_office",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_bytes = <Vec<u8>>::sse_decode(&mut deserializer);
+            let api_options = <crate::api::transliterator::Options>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::transliterator::OfficeError>((move || {
+                    let output_ok =
+                        crate::api::transliterator::convert_office(api_bytes, api_options)?;
+                    std::result::Result::Ok(output_ok)
+                })(
+                ))
+            }
+        },
+    )
+}
 fn wire__crate__api__transliterator__init_app_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -321,6 +357,20 @@ impl SseDecode for crate::api::transliterator::ConvertedDocx {
     }
 }
 
+impl SseDecode for crate::api::transliterator::ConvertedOffice {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_format = <crate::api::transliterator::OfficeFormat>::sse_decode(deserializer);
+        let mut var_bytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_summary = <crate::api::transliterator::Summary>::sse_decode(deserializer);
+        return crate::api::transliterator::ConvertedOffice {
+            format: var_format,
+            bytes: var_bytes,
+            summary: var_summary,
+        };
+    }
+}
+
 impl SseDecode for crate::api::transliterator::DocxError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -363,6 +413,35 @@ impl SseDecode for Vec<u8> {
             ans_.push(<u8>::sse_decode(deserializer));
         }
         return ans_;
+    }
+}
+
+impl SseDecode for crate::api::transliterator::OfficeError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::transliterator::OfficeError::NotOffice,
+            1 => crate::api::transliterator::OfficeError::Unsupported,
+            2 => crate::api::transliterator::OfficeError::Encrypted,
+            3 => crate::api::transliterator::OfficeError::Damaged,
+            4 => crate::api::transliterator::OfficeError::Refused,
+            _ => unreachable!("Invalid variant for OfficeError: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::transliterator::OfficeFormat {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::transliterator::OfficeFormat::Docx,
+            1 => crate::api::transliterator::OfficeFormat::Xlsx,
+            2 => crate::api::transliterator::OfficeFormat::Xls,
+            3 => crate::api::transliterator::OfficeFormat::Doc,
+            _ => unreachable!("Invalid variant for OfficeFormat: {}", inner),
+        };
     }
 }
 
@@ -449,8 +528,11 @@ fn pde_ffi_dispatcher_primary_impl(
         2 => wire__crate__api__transliterator__apply_impl(port, ptr, rust_vec_len, data_len),
         3 => wire__crate__api__transliterator__convert_impl(port, ptr, rust_vec_len, data_len),
         4 => wire__crate__api__transliterator__convert_docx_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__transliterator__init_app_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__transliterator__summarize_impl(port, ptr, rust_vec_len, data_len),
+        5 => {
+            wire__crate__api__transliterator__convert_office_impl(port, ptr, rust_vec_len, data_len)
+        }
+        6 => wire__crate__api__transliterator__init_app_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__transliterator__summarize_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -537,6 +619,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::ConvertedDocx
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::transliterator::ConvertedOffice {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.format.into_into_dart().into_dart(),
+            self.bytes.into_into_dart().into_dart(),
+            self.summary.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::transliterator::ConvertedOffice
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::ConvertedOffice>
+    for crate::api::transliterator::ConvertedOffice
+{
+    fn into_into_dart(self) -> crate::api::transliterator::ConvertedOffice {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::transliterator::DocxError {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
@@ -554,6 +658,53 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::DocxError>
     for crate::api::transliterator::DocxError
 {
     fn into_into_dart(self) -> crate::api::transliterator::DocxError {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::transliterator::OfficeError {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::NotOffice => 0.into_dart(),
+            Self::Unsupported => 1.into_dart(),
+            Self::Encrypted => 2.into_dart(),
+            Self::Damaged => 3.into_dart(),
+            Self::Refused => 4.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::transliterator::OfficeError
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::OfficeError>
+    for crate::api::transliterator::OfficeError
+{
+    fn into_into_dart(self) -> crate::api::transliterator::OfficeError {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::transliterator::OfficeFormat {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Docx => 0.into_dart(),
+            Self::Xlsx => 1.into_dart(),
+            Self::Xls => 2.into_dart(),
+            Self::Doc => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::transliterator::OfficeFormat
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::transliterator::OfficeFormat>
+    for crate::api::transliterator::OfficeFormat
+{
+    fn into_into_dart(self) -> crate::api::transliterator::OfficeFormat {
         self
     }
 }
@@ -672,6 +823,15 @@ impl SseEncode for crate::api::transliterator::ConvertedDocx {
     }
 }
 
+impl SseEncode for crate::api::transliterator::ConvertedOffice {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::transliterator::OfficeFormat>::sse_encode(self.format, serializer);
+        <Vec<u8>>::sse_encode(self.bytes, serializer);
+        <crate::api::transliterator::Summary>::sse_encode(self.summary, serializer);
+    }
+}
+
 impl SseEncode for crate::api::transliterator::DocxError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -712,6 +872,43 @@ impl SseEncode for Vec<u8> {
         for item in self {
             <u8>::sse_encode(item, serializer);
         }
+    }
+}
+
+impl SseEncode for crate::api::transliterator::OfficeError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::transliterator::OfficeError::NotOffice => 0,
+                crate::api::transliterator::OfficeError::Unsupported => 1,
+                crate::api::transliterator::OfficeError::Encrypted => 2,
+                crate::api::transliterator::OfficeError::Damaged => 3,
+                crate::api::transliterator::OfficeError::Refused => 4,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::transliterator::OfficeFormat {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::transliterator::OfficeFormat::Docx => 0,
+                crate::api::transliterator::OfficeFormat::Xlsx => 1,
+                crate::api::transliterator::OfficeFormat::Xls => 2,
+                crate::api::transliterator::OfficeFormat::Doc => 3,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 

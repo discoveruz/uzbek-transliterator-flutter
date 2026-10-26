@@ -18,7 +18,7 @@ void main() {
     expect(await convert(text: 'Toshkent shahri, Ўзбекистон'), 'Toşkent şahri, Özbekiston');
   });
 
-  testWidgets('saves the chosen Word documents in the new alphabet, shows them, and keeps them in the history', (
+  testWidgets('saves the chosen Word and Excel files in the new alphabet, shows them, and keeps them in the history', (
     tester,
   ) async {
     // The documents come straight from the test instead of from the file dialog, and go to a folder of the test's own.
@@ -46,16 +46,19 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
     // Desktops take documents dropped on the window; phones only choose them.
-    expect(find.text(canOpenFolders ? 'Drop Word documents here' : 'Choose Word documents'), findsOneWidget);
+    expect(
+      find.text(canOpenFolders ? 'Drop Word and Excel files here' : 'Choose Word and Excel files'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Choose files'));
     await pumpUntilFound(tester, find.text('hello-yangi.docx'));
-    // The documents convert one at a time, and notes.docx, which is not a Word document, comes last.
-    await pumpUntilFound(tester, find.textContaining('Not a Word document'));
+    // The documents convert one at a time, and notes.docx, which is not a Word or Excel file, comes last.
+    await pumpUntilFound(tester, find.textContaining('Not a Word or Excel file'));
     expect(find.text('hello-yangi.docx'), findsOneWidget);
     expect(find.textContaining('3 old letters, 2 Cyrillic words, 1 left as typed'), findsOneWidget);
     expect(find.text('notes.docx'), findsOneWidget);
-    expect(find.textContaining('Not a Word document'), findsOneWidget);
+    expect(find.textContaining('Not a Word or Excel file'), findsOneWidget);
     final saved = await File('${folder.path}/hello-yangi.docx').readAsBytes();
     expect((await convertDocx(docx: saved)).summary.oldLetters, 0);
     await tester.pumpAndSettle();
@@ -66,7 +69,7 @@ void main() {
 
     await tester.tap(find.text('Choose files'));
     await pumpUntilFound(tester, find.text('hello-yangi (1).docx'));
-    await pumpUntilFound(tester, find.textContaining('Not a Word document'), count: 2);
+    await pumpUntilFound(tester, find.textContaining('Not a Word or Excel file'), count: 2);
     expect(File('${folder.path}/hello-yangi.docx').readAsBytesSync(), saved);
     await tester.pumpAndSettle();
     expect(revealed, hasLength(canOpenFolders ? 2 : 0));
@@ -89,7 +92,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose files'));
     await pumpUntilFound(tester, find.text('hello-yangi (2).docx'));
-    await pumpUntilFound(tester, find.textContaining('Not a Word document'), count: 3);
+    await pumpUntilFound(tester, find.textContaining('Not a Word or Excel file'), count: 3);
     await tester.pumpAndSettle();
     expect(revealed, hasLength(canOpenFolders ? 3 : 0));
     expect(shared, hasLength(canOpenFolders ? 0 : 1));
@@ -102,6 +105,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(themeMode.value, ThemeMode.dark);
     expect(settings.theme, ThemeMode.dark);
+  });
+
+  testWidgets('saves a workbook as a workbook, by what its bytes are and not by what its name says', (tester) async {
+    // A stat.uz export. The second file has the same bytes under the name of an old workbook.
+    final workbook = (await rootBundle.load('integration_test/sample.xlsx')).buffer.asUint8List();
+    final folder = await Directory.systemTemp.createTemp('saved');
+    addTearDown(() => folder.delete(recursive: true));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ConvertPage(
+          key: UniqueKey(),
+          themeMode: ValueNotifier(ThemeMode.system),
+          pickDocuments: () async => [
+            XFile.fromData(workbook, path: 'klassifikator.xlsx'),
+            XFile.fromData(workbook, path: 'eski.xls'),
+          ],
+          reveal: (paths) async {},
+          share: (paths, origin) async {},
+          settings: _MemorySettings(folder),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose files'));
+    await pumpUntilFound(tester, find.text('klassifikator-yangi.xlsx'));
+    await pumpUntilFound(tester, find.text('eski-yangi.xlsx'));
+    expect(find.text('klassifikator-yangi.xlsx'), findsOneWidget);
+    expect(find.text('eski-yangi.xlsx'), findsOneWidget);
+    expect(find.textContaining('old letters'), findsNWidgets(2));
+    final saved = await File('${folder.path}/klassifikator-yangi.xlsx').readAsBytes();
+    expect(saved.sublist(0, 2), [0x50, 0x4b]);
+    final again = await convertOffice(bytes: saved);
+    expect((again.format, again.summary.oldLetters, again.summary.cyrillicWords), (OfficeFormat.xlsx, 0, 0));
   });
 }
 

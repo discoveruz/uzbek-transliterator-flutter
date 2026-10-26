@@ -1,15 +1,17 @@
 # Yangi alifbo — Flutter app
 
-A Flutter app for Android, iOS, macOS, Windows and Linux that writes Uzbek Word documents in the new Latin alphabet
-(Ö, Ğ, Ş, Ç), from old Latin and from Cyrillic. The rules live in the Rust
+A Flutter app for Android, iOS, macOS, Windows and Linux that writes Uzbek Word and Excel files (.docx, .xlsx, .doc,
+.xls) in the new Latin alphabet (Ö, Ğ, Ş, Ç), from old Latin and from Cyrillic. The rules live in the Rust
 [yangi-alifbo engine](https://github.com/discoveruz/uzbek-transliterator-engine), which the app calls through
 [flutter_rust_bridge](https://cjycode.com/flutter_rust_bridge/). The engine's README lists what converts and what
 stays as typed.
 
-Choose Word documents, as many as you like, or on a desktop drop them, or folders of them, on the window. Each one is
-converted in turn and saved as a new document: `hujjat.docx` becomes `hujjat-yangi.docx`, then `hujjat-yangi (1).docx`,
-the way a browser names a download. The history keeps the saved documents between runs. On a desktop a saved
-document's button shows it in Finder, Explorer or the file manager; on a phone it shares the document.
+Choose Word and Excel files, as many as you like, or on a desktop drop them, or folders of them, on the window. Each one
+is converted in turn and saved as a new file of the same kind: `hujjat.docx` becomes `hujjat-yangi.docx`, then
+`hujjat-yangi (1).docx`, the way a browser names a download. The kind is read from the file's bytes, so a workbook named
+`.xls` that is really an `.xlsx` is saved as one. In Excel files all the text is converted, Russian and English columns
+too. The history keeps the saved files between runs. On a desktop a saved
+file's button shows it in Finder, Explorer or the file manager; on a phone it shares the document.
 
 ## Run it
 
@@ -34,7 +36,7 @@ The app id is `uz.yangialifbo.app` on every platform.
 | Path | What it holds |
 |------|---------------|
 | `lib/main.dart` | Starts the app, with its light and dark themes |
-| `lib/convert_page.dart` | The screen: choose or drop Word documents, watch each one convert, show or share what was saved |
+| `lib/convert_page.dart` | The screen: choose or drop Word and Excel files, watch each one convert, show or share what was saved |
 | `lib/document.dart` | A document on its way through the queue, and how it is converted and named |
 | `lib/settings.dart` | What the app keeps between runs (save folder, "Open the folder when done", history), and showing files in Finder or Explorer, or sharing them on phones |
 | `lib/widgets/` | The drop zone and the document cards |
@@ -43,12 +45,14 @@ The app id is `uz.yangialifbo.app` on every platform.
 | `rust/` | The Rust crate that exposes the engine to Dart (`rust/src/api/transliterator.rs`) |
 | `rust_builder/` | Builds `rust/` with cargokit and bundles it with the app on each platform |
 | `test/` | Calls the engine through the bridge |
-| `integration_test/` | Runs the app and converts a Word document in it |
+| `integration_test/` | Runs the app and converts Word and Excel files in it |
 
-`lib/engine.dart` gives `convert`, `analyze`, `apply`, `summarize` and `convertDocx`. Call `await RustLib.init()` once
+`lib/engine.dart` gives `convert`, `analyze`, `apply`, `summarize`, `convertDocx` and `convertOffice`. Call `await RustLib.init()` once
 before them, as `main()` does. A `Change`'s `start` and `end` index the Dart string. `Options(oldLatin: false)` or
 `Options(cyrillic: false)` converts only one script. `convertDocx` throws `DocxError.notWord` for a file that is not a
-Word document, and `DocxError.damaged` for a broken one.
+Word document, and `DocxError.damaged` for a broken one. `convertOffice` takes a Word or Excel file of any kind and gives
+the same kind back (`ConvertedOffice.format`); it throws an `OfficeError`: `notOffice`, `unsupported` (an .xlsb or a
+Word 6 file), `encrypted`, `damaged` or `refused` (something in the file that cannot be rewritten safely).
 
 On a desktop, converted documents go to the app's own Documents folder (on macOS,
 `~/Library/Containers/uz.yangialifbo.app/Data/Documents`; on Windows and Linux, `Documents/Yangi alifbo`) until another
@@ -83,8 +87,8 @@ flutter test integration_test -d macos                 # inside the app
 flutter test integration_test -d <device>              # inside the app on an Android emulator or the iOS simulator
 ```
 
-The integration test presses **Choose files** with `integration_test/hello.docx` and a file that is not a Word document
-in place of the file dialog. It checks the saved documents and their names, the history after a restart, each
+The integration test presses **Choose files** with `integration_test/hello.docx` and a file that is not a Word or Excel
+file in place of the file dialog, and then once more with a workbook. It checks the saved documents and their names, the history after a restart, each
 document's button (**Show in Finder** on macOS, **Share** on a phone), and the theme in Settings.
 
 ## Working on the engine at the same time

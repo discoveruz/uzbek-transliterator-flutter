@@ -45,6 +45,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ConvertedDocx dco_decode_converted_docx(dynamic raw);
 
   @protected
+  ConvertedOffice dco_decode_converted_office(dynamic raw);
+
+  @protected
   DocxError dco_decode_docx_error(dynamic raw);
 
   @protected
@@ -58,6 +61,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  OfficeError dco_decode_office_error(dynamic raw);
+
+  @protected
+  OfficeFormat dco_decode_office_format(dynamic raw);
 
   @protected
   SkipReason? dco_decode_opt_box_autoadd_skip_reason(dynamic raw);
@@ -102,6 +111,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ConvertedDocx sse_decode_converted_docx(SseDeserializer deserializer);
 
   @protected
+  ConvertedOffice sse_decode_converted_office(SseDeserializer deserializer);
+
+  @protected
   DocxError sse_decode_docx_error(SseDeserializer deserializer);
 
   @protected
@@ -115,6 +127,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  OfficeError sse_decode_office_error(SseDeserializer deserializer);
+
+  @protected
+  OfficeFormat sse_decode_office_format(SseDeserializer deserializer);
 
   @protected
   SkipReason? sse_decode_opt_box_autoadd_skip_reason(
@@ -164,6 +182,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_converted_docx(ConvertedDocx self, SseSerializer serializer);
 
   @protected
+  void sse_encode_converted_office(
+    ConvertedOffice self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_docx_error(DocxError self, SseSerializer serializer);
 
   @protected
@@ -180,6 +204,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     Uint8List self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_office_error(OfficeError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_office_format(OfficeFormat self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_skip_reason(
